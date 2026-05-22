@@ -1,0 +1,11 @@
+{
+  "name": "OmniBazaar",
+  "description": "Premium Indian Multi-Vendor E-Commerce Marketplace with advanced Admin, Vendor, Customer/User, and Delivery dashboard modules, Aura AI recommendations, real-time Leaflet map integration, multi-lingual translation, and secure role-based session workflows.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
