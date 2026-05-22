@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import MapPicker from './MapPicker';
 import { 
   Store, 
@@ -47,6 +48,7 @@ export default function DashboardVendor() {
   const [pincode, setPincode] = useState(vendorRequest?.pincode || '');
   const [latitude, setLatitude] = useState(vendorRequest?.latitude || 12.9716);
   const [longitude, setLongitude] = useState(vendorRequest?.longitude || 77.5946);
+  const [additionalDetails, setAdditionalDetails] = useState(vendorRequest?.additionalDetails || '');
 
   // Document file upload simulation state
   const [uploadingDoc, setUploadingDoc] = useState(false);
@@ -152,10 +154,13 @@ export default function DashboardVendor() {
   const [loading, setLoading] = useState(false);
   const [notif, setNotif] = useState<string | null>(null);
 
+  const [analytics, setAnalytics] = useState<any>(null);
+
   useEffect(() => {
     if (vendorRequest?.status === 'approved') {
       fetchCatalog();
       fetchOrders();
+      fetchAnalytics();
     }
   }, [vendorRequest]);
 
@@ -187,6 +192,20 @@ export default function DashboardVendor() {
     }
   };
 
+  const fetchAnalytics = async () => {
+    try {
+      const res = await fetch('/api/vendor/analytics', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAnalytics(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const submitProfileVerification = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -210,7 +229,8 @@ export default function DashboardVendor() {
           pincode,
           latitude: parseFloat(latitude as any),
           longitude: parseFloat(longitude as any),
-          documentUrl: docFileName ? `https://secure.documents/bazaar/${docFileName}` : 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=120&q=80'
+          additionalDetails,
+          documentUrl: 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=800&q=80'
         })
       });
       if (res.ok) {
@@ -597,6 +617,65 @@ export default function DashboardVendor() {
                         </span>
                       </div>
                     </div>
+
+                    {/* Vendor Analytics Chart Block */}
+                    {analytics && analytics.salesByDay && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                        {/* Revenue Trend Line Chart */}
+                        <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden p-6">
+                          <div className="flex justify-between items-center mb-6">
+                            <div>
+                              <h4 className="text-sm font-bold font-display text-gray-800 uppercase tracking-wider">
+                                Daily Revenue (Last 7 Days)
+                              </h4>
+                              <p className="text-xs text-gray-500 mt-1">Your store's aggregate sales performance.</p>
+                            </div>
+                          </div>
+                          <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={analytics.salesByDay} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis dataKey="date" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                                <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(val) => `₹${val}`} />
+                                <RechartsTooltip 
+                                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                  labelStyle={{ color: '#64748b', fontSize: '12px', marginBottom: '4px' }}
+                                />
+                                <Line type="monotone" dataKey="amount" name="Revenue" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff'}} activeDot={{r: 6}} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+
+                        {/* Top Products Bar Chart */}
+                        {analytics.topProducts && analytics.topProducts.length > 0 && (
+                          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden p-6">
+                            <div className="flex justify-between items-center mb-6">
+                              <div>
+                                <h4 className="text-sm font-bold font-display text-gray-800 uppercase tracking-wider">
+                                  Top Selling Products
+                                </h4>
+                                <p className="text-xs text-gray-500 mt-1">Your highest volume inventory items.</p>
+                              </div>
+                            </div>
+                            <div className="h-64 w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={analytics.topProducts} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                  <XAxis dataKey="name" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(val) => val.substring(0, 10) + '...'} />
+                                  <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                                  <RechartsTooltip 
+                                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    cursor={{ fill: '#f8fafc' }}
+                                  />
+                                  <Bar dataKey="sales" name="Units Sold" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -655,7 +734,6 @@ export default function DashboardVendor() {
                           required
                           value={storeName}
                           onChange={e => setStoreName(e.target.value)}
-                          placeholder="e.g. Raju Silk Weaves"
                           className="w-full bg-white px-3 py-2 text-xs rounded-xl border focus:border-violet-500 outline-none"
                         />
                       </div>
@@ -667,7 +745,6 @@ export default function DashboardVendor() {
                           required
                           value={legalName}
                           onChange={e => setLegalName(e.target.value)}
-                          placeholder="e.g. Raju Textiles Private Limited"
                           className="w-full bg-white px-3 py-2 text-xs rounded-xl border focus:border-violet-500 outline-none"
                         />
                       </div>
@@ -680,7 +757,6 @@ export default function DashboardVendor() {
                         rows={2}
                         value={description}
                         onChange={e => setDescription(e.target.value)}
-                        placeholder="Provide high-quality descriptions of products sourced..."
                         className="w-full bg-white p-2.5 text-xs rounded-xl border focus:border-violet-500 outline-none"
                       />
                     </div>
@@ -693,19 +769,16 @@ export default function DashboardVendor() {
                           required
                           value={regNumber}
                           onChange={e => setRegNumber(e.target.value)}
-                          placeholder="CIN / REG NUM"
                           className="w-full bg-white px-3 py-2 text-xs rounded-xl border focus:border-violet-500 outline-none font-mono"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-700 uppercase tracking-wider mb-1">GST Tax Identifier</label>
+                        <label className="block text-[10px] font-bold text-gray-700 uppercase tracking-wider mb-1">GST Tax Identifier (Optional)</label>
                         <input
                           type="text"
-                          required
                           value={gstNumber}
                           onChange={e => setGSTNumber(e.target.value)}
-                          placeholder="15-digit GSTIN"
                           className="w-full bg-white px-3 py-2 text-xs rounded-xl border focus:border-violet-500 outline-none font-mono uppercase"
                         />
                       </div>
@@ -717,7 +790,6 @@ export default function DashboardVendor() {
                           required
                           value={businessPhone}
                           onChange={e => setBusinessPhone(e.target.value)}
-                          placeholder="e.g. 9876543210"
                           className="w-full bg-white px-3 py-2 text-xs rounded-xl border focus:border-violet-500 outline-none font-mono font-bold"
                         />
                       </div>
@@ -735,7 +807,6 @@ export default function DashboardVendor() {
                         required
                         value={address}
                         onChange={e => setAddress(e.target.value)}
-                        placeholder="Street address of shop/warehouse"
                         className="w-full bg-white px-3 py-2 text-xs rounded-xl border focus:border-violet-500 outline-none"
                       />
                     </div>
@@ -748,7 +819,6 @@ export default function DashboardVendor() {
                           required
                           value={district}
                           onChange={e => setDistrict(e.target.value)}
-                          placeholder="district"
                           className="w-full bg-gray-100 px-3 py-2 text-xs rounded-xl border outline-none font-semibold text-gray-650"
                         />
                       </div>
@@ -759,7 +829,6 @@ export default function DashboardVendor() {
                           required
                           value={state}
                           onChange={e => setState(e.target.value)}
-                          placeholder="state"
                           className="w-full bg-gray-100 px-3 py-2 text-xs rounded-xl border outline-none font-semibold text-gray-650"
                         />
                       </div>
@@ -770,10 +839,19 @@ export default function DashboardVendor() {
                           required
                           value={pincode}
                           onChange={e => setPincode(e.target.value)}
-                          placeholder="Pincode"
                           className="w-full bg-white px-3 py-2 text-xs rounded-xl border outline-none focus:border-violet-500 font-mono font-bold"
                         />
                       </div>
+                    </div>
+
+                    <div className="border-t border-gray-200/60 pt-4 mb-4">
+                      <label className="block text-[10px] font-bold text-gray-700 uppercase tracking-wider mb-1">Extra Details</label>
+                      <textarea
+                        rows={2}
+                        value={additionalDetails}
+                        onChange={e => setAdditionalDetails(e.target.value)}
+                        className="w-full bg-white p-2.5 text-xs rounded-xl border focus:border-violet-500 outline-none"
+                      />
                     </div>
 
                     {/* License documentation uploading - behave exactly like the drag-drop simulated loader in the video */}

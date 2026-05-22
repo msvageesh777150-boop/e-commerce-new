@@ -143,7 +143,8 @@ let db: any = {
   delivery_staff: [],
   shipments: [],
   shipment_logs: [],
-  schemas: {} // Holds dynamic multi-tenant sub-databases representing "vendor_[store_name]"
+  schemas: {}, // Holds dynamic multi-tenant sub-databases representing "vendor_[store_name]"
+  vehicle_types: []
 };
 
 // Seed administrative and user roles in the database securely on startup
@@ -155,6 +156,12 @@ function seedDatabase() {
   db.delivery_staff = db.delivery_staff || [];
   db.shipments = db.shipments || [];
   db.shipment_logs = db.shipment_logs || [];
+  db.vehicle_types = db.vehicle_types || [
+    { id: 'vt-1', name: 'Motorcycle / Bike' },
+    { id: 'vt-2', name: 'Electric Scooter' },
+    { id: 'vt-3', name: 'Parcel Mini Truck' },
+    { id: 'vt-4', name: 'Bicycle Fleet' }
+  ];
 
   // Enforce admin@gmail.com exists
   if (!db.users.some((u: any) => u.email === 'admin@gmail.com')) {
@@ -1037,6 +1044,7 @@ app.post('/api/vendor/profile/verify', (req, res) => {
     pincode,
     latitude,
     longitude,
+    additionalDetails,
     documentUrl
   } = req.body;
 
@@ -1064,6 +1072,7 @@ app.post('/api/vendor/profile/verify', (req, res) => {
   request.longitude = parseFloat(longitude) || 78.9629;
   request.status = 'pending'; // Marking as pending for admin review
   request.documentUrl = documentUrl || '';
+  request.additionalDetails = additionalDetails || '';
   request.remarks = 'Company application documentation submitted. Evaluating credentials.';
   request.history.push({
     status: 'pending',
@@ -1137,6 +1146,76 @@ app.get('/api/products/ai-recommendations', (req, res) => {
   const sorted = [...approved].sort((a: any, b: any) => (b.ratings || 0) - (a.ratings || 0));
   const recommendations = sorted.slice(0, 3);
   res.json({ recommendations });
+});
+
+// Vendor Analytics Endpoint
+app.get('/api/vendor/analytics', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+
+  if (!caller || caller.role !== 'vendor') {
+    return res.status(403).json({ error: 'Merchant context required.' });
+  }
+
+  const vendorProducts = db.products.filter((p: any) => p.vendorId === caller.id);
+  const vendorProductIds = vendorProducts.map((p: any) => p.id);
+  
+  // Find all orders that contain at least one item from this vendor
+  const vendorOrders = db.orders.filter((o: any) => 
+    o.items.some((item: any) => vendorProductIds.includes(item.productId))
+  );
+
+  let totalRevenue = 0;
+  vendorOrders.forEach((o: any) => {
+    o.items.forEach((item: any) => {
+      if (vendorProductIds.includes(item.productId)) {
+        totalRevenue += item.price * item.quantity;
+      }
+    });
+  });
+
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    return d.toISOString().split('T')[0];
+  }).reverse();
+
+  const salesByDay: Record<string, number> = {};
+  last7Days.forEach(d => salesByDay[d] = 0);
+
+  vendorOrders.forEach((o: any) => {
+    const d = new Date(o.createdAt || new Date()).toISOString().split('T')[0];
+    if (salesByDay[d] !== undefined) {
+      o.items.forEach((item: any) => {
+        if (vendorProductIds.includes(item.productId)) {
+          salesByDay[d] += item.price * item.quantity;
+        }
+      });
+    }
+  });
+
+  const topProductsRaw: Record<string, { name: string; sales: number }> = {};
+  vendorOrders.forEach((o: any) => {
+    o.items.forEach((item: any) => {
+      if (vendorProductIds.includes(item.productId)) {
+        if (!topProductsRaw[item.productId]) {
+          topProductsRaw[item.productId] = { name: item.name, sales: 0 };
+        }
+        topProductsRaw[item.productId].sales += item.quantity;
+      }
+    });
+  });
+
+  const topProducts = Object.values(topProductsRaw)
+    .sort((a, b) => b.sales - a.sales)
+    .slice(0, 5);
+
+  res.json({
+    salesByDay: last7Days.map(day => ({ date: day, amount: salesByDay[day] })),
+    topProducts,
+    totalRevenue,
+    totalOrders: vendorOrders.length
+  });
 });
 
 // Dynamic Multi-tenant Vendor Product Catalog endpoints
@@ -1393,6 +1472,33 @@ app.post('/api/customer/addresses', (req, res) => {
     u.addresses = [];
   }
   u.addresses.push(newAddress);
+
+  saveDB();
+  res.json({ success: true, addresses: u.addresses });
+});
+
+app.delete('/api/customer/addresses/:id', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+
+  if (!caller) {
+    return res.status(401).json({ error: 'Auth credentials context required.' });
+  }
+
+  const u = db.users.find((user: any) => user.email === caller.email || user.id === caller.id);
+  if (!u) {
+    return res.status(404).json({ error: 'User profile not found.' });
+  }
+
+  const { id } = req.params;
+  if (!u.addresses) return res.status(404).json({ error: 'No addresses found.' });
+  
+  const initialLength = u.addresses.length;
+  u.addresses = u.addresses.filter((addr: any) => addr.id !== id);
+
+  if (u.addresses.length === initialLength) {
+    return res.status(404).json({ error: 'Address not found' });
+  }
 
   saveDB();
   res.json({ success: true, addresses: u.addresses });
@@ -1706,7 +1812,7 @@ app.post('/api/delivery/staff', (req, res) => {
     return res.status(403).json({ error: 'Admin authorization required.' });
   }
 
-  const { id, name, email, phone, phone_number, password } = req.body;
+  const { id, name, email, phone, phone_number, password, vehicle_type, vehicle_plate } = req.body;
   const finalPhone = phone_number || phone;
 
   if (!name || !email || !password) {
@@ -1749,6 +1855,8 @@ app.post('/api/delivery/staff', (req, res) => {
     name,
     email,
     phone_number: finalPhone || '8888888888',
+    vehicle_type: vehicle_type || '',
+    vehicle_plate: vehicle_plate || '',
     status: 'active',
     isApproved: true,
     created_at: new Date().toISOString()
@@ -1797,6 +1905,58 @@ app.post('/api/delivery/staff/:id/approve', (req, res) => {
 
   saveDB();
   res.json({ success: true, isApproved: u.isApproved });
+});
+
+// DELETE /api/delivery/staff/:id (Admin deletes a delivery staff)
+app.delete('/api/delivery/staff/:id', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+  if (!caller || caller.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin authorization required.' });
+  }
+
+  const { id } = req.params;
+  db.users = db.users.filter((u: any) => u.id !== id);
+  db.delivery_staff = db.delivery_staff.filter((ds: any) => ds.id !== id);
+  saveDB();
+  res.json({ success: true });
+});
+
+// GET /api/admin/vehicle-types
+app.get('/api/admin/vehicle-types', (req, res) => {
+  res.json({ vehicle_types: db.vehicle_types || [] });
+});
+
+// POST /api/admin/vehicle-types
+app.post('/api/admin/vehicle-types', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+  if (!caller || caller.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin authorization required.' });
+  }
+
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'Name is required' });
+
+  db.vehicle_types = db.vehicle_types || [];
+  const newType = { id: 'vt-' + crypto.randomUUID().substring(0, 8), name };
+  db.vehicle_types.push(newType);
+  saveDB();
+  res.json({ vehicle_type: newType });
+});
+
+// DELETE /api/admin/vehicle-types/:id
+app.delete('/api/admin/vehicle-types/:id', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+  if (!caller || caller.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin authorization required.' });
+  }
+
+  const { id } = req.params;
+  db.vehicle_types = (db.vehicle_types || []).filter((vt: any) => vt.id !== id);
+  saveDB();
+  res.json({ success: true });
 });
 
 // GET /api/shipments (Filtered by roles)

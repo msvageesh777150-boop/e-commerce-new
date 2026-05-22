@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import { 
   Check, 
   X, 
@@ -80,8 +81,11 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
   const [staffEmail, setStaffEmail] = useState('');
   const [staffPhone, setStaffPhone] = useState('');
   const [staffPassword, setStaffPassword] = useState('');
-  const [staffVehicleType, setStaffVehicleType] = useState('bike');
+  const [staffVehicleType, setStaffVehicleType] = useState('');
   const [staffVehiclePlate, setStaffVehiclePlate] = useState('');
+  
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
+  const [newVehicleTypeName, setNewVehicleTypeName] = useState('');
 
   // Schema diagnostics
   const [diagnostics, setDiagnostics] = useState<any | null>(null);
@@ -156,6 +160,16 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
         const d = await resLogs.json();
         setShipmentLogs(d.logs || []);
       }
+      const resVehicles = await fetch('/api/admin/vehicle-types', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (resVehicles.ok) {
+        const d = await resVehicles.json();
+        setVehicleTypes(d.vehicle_types || []);
+        if (d.vehicle_types && d.vehicle_types.length > 0 && !staffVehicleType) {
+          setStaffVehicleType(d.vehicle_types[0].name);
+        }
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -226,6 +240,67 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
     } catch (e) {
       console.error(e);
       addToast('Network Error', 'Logistics system timeout.', 'error');
+    }
+  };
+
+  const handleDeleteCourier = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this courier?')) return;
+    try {
+      const res = await fetch(`/api/delivery/staff/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        addToast('Courier Deleted', 'The courier has been removed from the fleet.', 'success');
+        fetchLogisticsData();
+        fetchUsers();
+      } else {
+        addToast('Action Failed', 'Could not delete courier.', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      addToast('Network Error', 'Logistics system timeout.', 'error');
+    }
+  };
+
+  const handleAddVehicleType = async () => {
+    if (!newVehicleTypeName.trim()) return;
+    try {
+      const res = await fetch('/api/admin/vehicle-types', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newVehicleTypeName.trim() })
+      });
+      if (res.ok) {
+        addToast('Vehicle Type Added', `Added ${newVehicleTypeName} to the registry.`, 'success');
+        setNewVehicleTypeName('');
+        fetchLogisticsData();
+      } else {
+        addToast('Action Failed', 'Could not add vehicle type.', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteVehicleType = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this vehicle type?')) return;
+    try {
+      const res = await fetch(`/api/admin/vehicle-types/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        addToast('Vehicle Type Deleted', 'Removed vehicle type from registry.', 'success');
+        fetchLogisticsData();
+      } else {
+        addToast('Action Failed', 'Could not delete vehicle type.', 'error');
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -805,24 +880,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
               </div>
 
               {/* Dynamic Metric Cards Grid list */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                
-                {/* Global Sales */}
-                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest">Global Sales</span>
-                    <h4 className="text-2xl font-extrabold font-display text-gray-800 mt-1">
-                      ₹{totalSalesFromLogs > 0 ? totalSalesFromLogs.toLocaleString('en-IN') : '1,264'}
-                    </h4>
-                    <p className="text-[10px] text-emerald-600 font-mono font-bold mt-1 flex items-center gap-1">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      <span>+14.2% Realtime</span>
-                    </p>
-                  </div>
-                  <div className="h-12 w-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                    <TrendingUp className="h-5 w-5" />
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
                 {/* Total Consumers */}
                 <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between">
@@ -876,72 +934,60 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
 
               {/* Analytics Chart Block */}
               {analytics && analytics.salesByDay && (
-                <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h4 className="text-sm font-bold font-display text-gray-800 uppercase tracking-wider">
-                        Revenue Analytics (Last 7 Days)
-                      </h4>
-                      <p className="text-xs text-gray-500 mt-1">Platform-wide aggregate sales performance.</p>
-                    </div>
-                  </div>
-                  <div className="relative h-64 w-full pt-4">
-                    <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
-                      <defs>
-                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.3" />
-                          <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      
-                      {/* Grid lines */}
-                      {[0, 25, 50, 75, 100].map(y => (
-                        <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="#f1f5f9" strokeWidth="0.5" />
-                      ))}
-
-                      {(() => {
-                        const maxAmt = Math.max(...analytics.salesByDay.map((d: any) => d.amount), 1);
-                        const points = analytics.salesByDay.map((d: any, i: number) => {
-                          const x = (i / (analytics.salesByDay.length - 1)) * 100;
-                          const y = 100 - ((d.amount / maxAmt) * 90); // 90 to keep it slightly below top
-                          return `${x},${y}`;
-                        }).join(' ');
-                        const polygonPoints = `0,100 ${points} 100,100`;
-
-                        return (
-                          <>
-                            <polygon points={polygonPoints} fill="url(#chartGradient)" />
-                            <polyline points={points} fill="none" stroke="#4f46e5" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-                            {analytics.salesByDay.map((d: any, i: number) => {
-                              const x = (i / (analytics.salesByDay.length - 1)) * 100;
-                              const y = 100 - ((d.amount / maxAmt) * 90);
-                              return (
-                                <circle key={i} cx={x} cy={y} r="1.5" fill="#ffffff" stroke="#4f46e5" strokeWidth="0.5" />
-                              );
-                            })}
-                          </>
-                        );
-                      })()}
-                    </svg>
-                    
-                    {/* X-Axis labels */}
-                    <div className="absolute bottom-0 left-0 right-0 flex justify-between transform translate-y-full pt-3">
-                      {analytics.salesByDay.map((d: any, i: number) => (
-                        <span key={i} className="text-[10px] font-mono text-gray-400 bg-white px-1">
-                          {new Date(d.date).toLocaleDateString(undefined, { weekday: 'short' })}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="mt-10 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-6">
-                    {analytics.topProducts?.slice(0, 3).map((p: any, idx: number) => (
-                      <div key={idx} className="flex flex-col">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Top Seller {idx+1}</span>
-                        <span className="text-xs font-bold text-gray-800 mt-0.5">{p.name} ({p.count} sold)</span>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Revenue Trend Line Chart */}
+                  <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden p-6">
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h4 className="text-sm font-bold font-display text-gray-800 uppercase tracking-wider">
+                          Revenue Trend (Last 7 Days)
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-1">Platform-wide aggregate sales performance.</p>
                       </div>
-                    ))}
+                    </div>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={analytics.salesByDay} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis dataKey="date" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                          <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(val) => `₹${val}`} />
+                          <RechartsTooltip 
+                            contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            labelStyle={{ color: '#64748b', fontSize: '12px', marginBottom: '4px' }}
+                          />
+                          <Line type="monotone" dataKey="amount" name="Revenue" stroke="#4f46e5" strokeWidth={3} dot={{r: 4, fill: '#4f46e5', strokeWidth: 2, stroke: '#fff'}} activeDot={{r: 6}} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
+
+                  {/* Top Products Bar Chart */}
+                  {analytics.topProducts && analytics.topProducts.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden p-6">
+                      <div className="flex justify-between items-center mb-6">
+                        <div>
+                          <h4 className="text-sm font-bold font-display text-gray-800 uppercase tracking-wider">
+                            Top Performing Products
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1">Highest sales volume across all merchants.</p>
+                        </div>
+                      </div>
+                      <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={analytics.topProducts} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="name" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(val) => val.substring(0, 10) + '...'} />
+                            <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                            <RechartsTooltip 
+                              contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              cursor={{ fill: '#f8fafc' }}
+                            />
+                            <Bar dataKey="sales" name="Units Sold" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1199,18 +1245,30 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                         </div>
                       </div>
 
+                      {/* Extra Details */}
+                      {selectedRequest.additionalDetails && (
+                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                          <span className="font-bold text-indigo-700 uppercase tracking-widest text-[9px] block mb-1">Extra Details</span>
+                          <p className="text-indigo-900 text-xs leading-relaxed">{selectedRequest.additionalDetails}</p>
+                        </div>
+                      )}
+
                       {/* Certificate attachment */}
                       {selectedRequest.documentUrl && (
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 bg-slate-50 p-4 rounded-xl border border-gray-200">
                           <span className="font-bold text-slate-500 uppercase tracking-widest text-[9px] block">Uploaded Document Attachment</span>
-                          <div className="relative border rounded-xl overflow-hidden group bg-slate-900 h-44">
-                            <img 
-                              src={selectedRequest.documentUrl} 
-                              alt="GSt filing certificate" 
-                              className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" 
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 text-white p-3 flex items-end">
-                              <span className="text-[10px] font-mono tracking-widest opacity-80 uppercase font-black">GST License Filing</span>
+                          <div className="mt-2 flex items-center gap-3">
+                            <FileText className="h-8 w-8 text-indigo-500" />
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">Verification Document</p>
+                              <a 
+                                href={selectedRequest.documentUrl.includes('secure.documents') ? 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=800&q=80' : selectedRequest.documentUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-[10px] text-indigo-600 font-bold hover:underline inline-flex items-center gap-1 mt-0.5"
+                              >
+                                View Full Document <ArrowUpRight className="h-3 w-3" />
+                              </a>
                             </div>
                           </div>
                         </div>
@@ -1741,16 +1799,13 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                     <div className="grid grid-cols-2 gap-3.5">
                       <div className="space-y-1">
                         <label className="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Vehicle Type</label>
-                        <select
+                        <input
+                          type="text"
                           value={staffVehicleType}
                           onChange={(e) => setStaffVehicleType(e.target.value)}
-                          className="w-full bg-white px-2 py-2 border rounded-xl tracking-wide font-bold text-gray-800"
-                        >
-                          <option value="bike">Motorcycle / Bike</option>
-                          <option value="scooter">Electric Scooter</option>
-                          <option value="truck">Parcel Mini Truck</option>
-                          <option value="bicycle">Bicycle Fleet</option>
-                        </select>
+                          placeholder="e.g. Motorcycle"
+                          className="w-full bg-white px-3 py-2 border rounded-xl outline-none focus:border-indigo-500 font-mono"
+                        />
                       </div>
 
                       <div className="space-y-1">
@@ -1809,9 +1864,14 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                             <div className="flex-1 min-w-0 font-mono text-[11px] leading-relaxed">
                               <div className="flex items-start justify-between gap-1">
                                 <h5 className="font-extrabold text-gray-800 font-sans text-xs truncate" title={ds.name}>{ds.name}</h5>
-                                <span className="text-[9px] bg-slate-200/60 px-1.5 py-0.5 rounded text-gray-600 font-mono select-all shrink-0 font-bold" title={`Partner ID: ${ds.id}`}>
-                                  {ds.id}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[9px] bg-slate-200/60 px-1.5 py-0.5 rounded text-gray-600 font-mono select-all shrink-0 font-bold" title={`Partner ID: ${ds.id}`}>
+                                    {ds.id}
+                                  </span>
+                                  <button type="button" onClick={() => handleDeleteCourier(ds.id)} className="cursor-pointer text-rose-400 hover:text-rose-600 p-0.5" title="Delete Courier">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                               </div>
                               <p className="text-gray-500 text-[10px] mt-0.5 truncate select-all">{ds.email}</p>
                               <p className="text-slate-400">{ds.phone || ds.phone_number}</p>

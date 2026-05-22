@@ -354,26 +354,7 @@ export default function DashboardDelivery({ onNavigateTo }: DashboardDeliveryPro
         </div>
 
         <div className="flex items-center gap-2">
-          {onNavigateTo && (
-            <button type="button"
-              onClick={() => onNavigateTo('home')}
-              className="cursor-pointer text-xs p-3 bg-slate-850 hover:bg-slate-800 rounded-2xl border border-slate-850 text-indigo-400 font-bold transition-all flex items-center gap-1 w-full"
-              title="Back to Store"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Store
-            </button>
-          )}
 
-          <button type="button"
-            onClick={fetchShipmentsAndLogs}
-            className="cursor-pointer text-xs p-3 bg-slate-850 hover:bg-slate-800 rounded-2xl border border-slate-850 text-emerald-450 font-bold transition-all flex items-center gap-1 w-full"
-            title="Refresh Waybills"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Sync Hub
-          </button>
-          
           <button type="button"
             onClick={logout}
             className="cursor-pointer text-xs font-bold bg-slate-850 hover:bg-red-950 hover:text-red-400 border border-slate-850 hover:border-red-900/40 py-3 px-4 rounded-2xl transition-all"
@@ -419,7 +400,7 @@ export default function DashboardDelivery({ onNavigateTo }: DashboardDeliveryPro
             onClick={() => setActiveTab('available')}
             className={`flex-1 py-3 text-center rounded-xl transition-all cursor-pointer ${activeTab === 'available' ? 'bg-white shadow-xs text-indigo-700' : 'text-slate-500 hover:text-slate-800'}`}
           >
-            Depot Pool ({availableShipments.length})
+            Available Shipments ({availableShipments.length})
           </button>
           <button type="button" 
             onClick={() => setActiveTab('completed')}
@@ -453,7 +434,7 @@ export default function DashboardDelivery({ onNavigateTo }: DashboardDeliveryPro
                   <div className="text-center py-16 bg-slate-50 rounded-2xl border border-dashed border-gray-250 text-slate-500 text-xs leading-relaxed max-w-lg mx-auto space-y-3">
                     <Truck className="h-10 w-10 text-indigo-305 mx-auto animate-bounce" />
                     <p className="font-extrabold text-slate-700 text-sm">Your delivery queue is currently empty.</p>
-                    <p className="text-[11px] text-slate-450 italic">Switch to the "Depot Pool" tab above to claim packages waiting to be dispatched & delivered.</p>
+                    <p className="text-[11px] text-slate-450 italic">Switch to the "Available Shipments" tab above to claim packages waiting to be dispatched & delivered.</p>
                   </div>
                 ) : (
                   <div className="grid md:grid-cols-2 gap-6">

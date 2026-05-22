@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 import MapPicker from './MapPicker';
-import { ShoppingBag, Star, MapPin, Bell, CheckCircle, ShieldAlert, FileText, IndianRupee, MessageSquare, Heart, User, Settings, Loader2, Play } from 'lucide-react';
+import { ShoppingBag, Star, MapPin, Bell, CheckCircle, ShieldAlert, FileText, IndianRupee, MessageSquare, Heart, User, Settings, Loader2, Play, Trash2 } from 'lucide-react';
 
 export default function DashboardCustomer() {
   const { token, user, refreshProfile } = useAuth();
@@ -141,6 +141,24 @@ export default function DashboardCustomer() {
         setAddrState('');
         setAddrPincode('');
         setNotif('Address profile added successfully. Verified.');
+        fetchAddresses();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteAddress = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this address?')) return;
+    try {
+      const res = await fetch(`/api/customer/addresses/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        setNotif('Address deleted successfully.');
         fetchAddresses();
       }
     } catch (e) {
@@ -728,13 +746,23 @@ export default function DashboardCustomer() {
                     <p className="text-xs text-gray-500 italic font-mono">No addresses stored on file.</p>
                   ) : (
                     addresses.map((a, i) => (
-                      <div key={i} className="p-3 bg-white border border-gray-150 rounded-xl flex gap-3 shadow-xs">
-                        <MapPin className="h-5 w-5 text-violet-700 shrink-0 mt-0.5" />
-                        <div>
-                          <h5 className="font-bold text-sm text-gray-800 leading-tight capitalize">{a.label}</h5>
-                          <p className="text-xs text-gray-600 mt-1">{a.addressLine}</p>
-                          <p className="text-[10px] text-gray-400 font-semibold font-mono mt-0.5">PIN: {a.pincode} | GPS: {a.latitude.toFixed(4)}, {a.longitude.toFixed(4)}</p>
+                      <div key={i} className="p-3 bg-white border border-gray-150 rounded-xl flex items-start justify-between shadow-xs">
+                        <div className="flex gap-3">
+                          <MapPin className="h-5 w-5 text-violet-700 shrink-0 mt-0.5" />
+                          <div>
+                            <h5 className="font-bold text-sm text-gray-800 leading-tight capitalize">{a.label}</h5>
+                            <p className="text-xs text-gray-600 mt-1">{a.addressLine}</p>
+                            <p className="text-[10px] text-gray-400 font-semibold font-mono mt-0.5">PIN: {a.pincode} | GPS: {a.latitude?.toFixed(4)}, {a.longitude?.toFixed(4)}</p>
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAddress(a.id)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                          title="Delete Address"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     ))
                   )}

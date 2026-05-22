@@ -419,9 +419,10 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
           </form>
 
           {/* Toggle login/signup */}
-          {activeRole !== 'admin' && (
+          {(activeRole === 'customer' || activeRole === 'vendor') && (
             <div className="mt-5 text-center">
               <button
+                type="button"
                 onClick={() => {
                   setIsLogin(!isLogin);
                   setErrorMsg(null);
@@ -435,11 +436,6 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
                 }
               </button>
             </div>
-          )}
-          {activeRole === 'admin' && (
-            <p className="mt-4 text-xs text-center text-gray-400 font-mono">
-              Admin accounts are managed by the system. Contact your system administrator for access.
-            </p>
           )}
 
         </div>
