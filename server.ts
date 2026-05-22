@@ -511,6 +511,40 @@ loadDB();
 // API REST ENDPOINTS
 // ==========================================
 
+// Get current user profile endpoint (Fixes forced logout bug on form submit)
+app.get('/api/auth/me', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+
+  if (!caller) {
+    return res.status(401).json({ error: 'Unauthorized credentials session context.' });
+  }
+
+  const fullUser = db.users.find((u: any) => u.id === caller.id);
+  if (!fullUser) {
+    return res.status(404).json({ error: 'Profile not found' });
+  }
+
+  let vendorRequest = null;
+  if (fullUser.role === 'vendor') {
+    vendorRequest = db.vendor_requests.find((v: any) => v.vendorId === fullUser.id && v.status === 'approved') || 
+                    db.vendor_requests.find((v: any) => v.vendorId === fullUser.id);
+  }
+
+  res.json({
+    user: {
+      id: fullUser.id,
+      name: fullUser.name,
+      email: fullUser.email,
+      phone: fullUser.phone,
+      role: fullUser.role,
+      addresses: fullUser.addresses || [],
+      isSuspended: !!fullUser.isSuspended
+    },
+    vendorRequest
+  });
+});
+
 // Authenticate / Login endpoint
 app.post('/api/auth/login', (req, res) => {
   const { emailOrPhone, password, captcha, expectedCaptcha } = req.body;
