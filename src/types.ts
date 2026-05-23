@@ -37,6 +37,7 @@ export interface VendorRequest {
   pincode: string;
   latitude: number;
   longitude: number;
+  businessCategory: string;
   status: VendorApprovalStatus;
   documentUrl: string; // Base64 simulated URI
   remarks: string;
@@ -71,6 +72,8 @@ export interface Product {
   ratings: number; // Avg rating out of 5
   reviewsCount: number;
   isApproved: boolean; // Moderation approved by admin
+  disabledByAdmin?: boolean; // Toggled by admin to hide/show product on marketplace
+  video?: string; // Optional video path or base64 URI
   createdAt: string;
 }
 

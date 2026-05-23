@@ -26,6 +26,16 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [hasInitializedRole, setHasInitializedRole] = useState(false);
+
+  React.useEffect(() => {
+    if (!loading && user && !hasInitializedRole) {
+      if (['admin', 'vendor', 'delivery'].includes(user.role)) {
+        setCurrentPage('dashboard');
+      }
+      setHasInitializedRole(true);
+    }
+  }, [loading, user, hasInitializedRole]);
 
   const handleNavigateTo = (page: string) => {
     setCurrentPage(page);
@@ -78,7 +88,7 @@ function AppContent() {
   };
 
   // Admin sees only the dashboard — no header/footer
-  if (user.role === 'admin') {
+  if (user.role === 'admin' && currentPage === 'dashboard') {
     return (
       <div className="min-h-screen bg-slate-50">
         {renderDashboardByRole()}
@@ -87,7 +97,7 @@ function AppContent() {
   }
 
   // Delivery partners see only their dashboard
-  if (user.role === 'delivery') {
+  if (user.role === 'delivery' && currentPage === 'dashboard') {
     return (
       <div className="min-h-screen bg-slate-50">
         {renderDashboardByRole()}
@@ -114,6 +124,7 @@ function AppContent() {
             onNavigateTo={handleNavigateTo}
             searchQuery={searchQuery}
             onSelectProductId={setSelectedProductId}
+            onSelectCategory={setSelectedCategory}
           />
         )}
 

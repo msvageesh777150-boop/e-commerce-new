@@ -25,6 +25,8 @@ export default function ShopPage({
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState<any[]>([]);
 
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
+
   const [localSearch, setLocalSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState(selectedCategory || 'all');
   const [brandFilter, setBrandFilter] = useState('all');
@@ -39,6 +41,7 @@ export default function ShopPage({
   useEffect(() => {
     fetchProducts();
     fetchReviews();
+    fetchCategories();
   }, []);
 
   const fetchProducts = async () => {
@@ -61,6 +64,18 @@ export default function ShopPage({
       if (res.ok) {
         const data = await res.json();
         setReviews(data.reviews || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/categories');
+      if (res.ok) {
+        const data = await res.json();
+        setCategoriesList(data.categories || []);
       }
     } catch (e) {
       console.error(e);
@@ -152,20 +167,23 @@ export default function ShopPage({
           <div className="space-y-2">
             <label className="block text-[10px] uppercase font-bold text-gray-700 tracking-wider">Filter Category</label>
             <div className="space-y-1">
-              {['all', 'electronics', 'fashion', 'home_living', 'fitness', 'books'].map((cat) => {
-                const isSelected = categoryFilter.toLowerCase() === cat.toLowerCase();
-                const label = cat === 'all' ? 'All Categories' :
-                              cat === 'electronics' ? 'Electronics' :
-                              cat === 'fashion' ? 'Fashion' :
-                              cat === 'home_living' ? 'Home & Living' :
-                              cat === 'fitness' ? 'Fitness' : 'Books';
+              <button type="button"
+                onClick={() => { setCategoryFilter('all'); onSelectCategory('all'); }}
+                className={`cursor-pointer w-full text-left px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${categoryFilter === 'all' ? 'bg-violet-50 text-violet-700 border-l-2 border-violet-600' : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                <span>All Categories</span>
+                {categoryFilter === 'all' && <Check className="h-3 w-3 text-violet-600 shrink-0" />}
+              </button>
+
+              {categoriesList.map((cat) => {
+                const isSelected = categoryFilter.toLowerCase() === cat.slug.toLowerCase();
                 return (
                   <button type="button"
-                    key={cat}
-                    onClick={() => { setCategoryFilter(cat); onSelectCategory(cat); }}
+                    key={cat.id}
+                    onClick={() => { setCategoryFilter(cat.slug); onSelectCategory(cat.slug); }}
                     className={`cursor-pointer w-full text-left px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${isSelected ? 'bg-violet-50 text-violet-700 border-l-2 border-violet-600' : 'text-gray-600 hover:bg-gray-50'}`}
                   >
-                    <span>{label}</span>
+                    <span className="capitalize">{cat.name}</span>
                     {isSelected && <Check className="h-3 w-3 text-violet-600 shrink-0" />}
                   </button>
                 );

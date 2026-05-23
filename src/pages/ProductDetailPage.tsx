@@ -162,12 +162,19 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
   }
 
   const { avg, count } = getRatingDetails();
+ 
+  const isVideo = (url: string) => {
+    return url && (url.startsWith('data:video/') || url.includes('.mp4') || url.includes('.webm') || url.includes('.ogg'));
+  };
 
   const extraThumbnails = [
-    product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80',
-    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80',
-    'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&q=80'
-  ];
+    ...(product.images || []),
+    ...(product.video ? [product.video] : [])
+  ].filter(Boolean);
+  
+  if (extraThumbnails.length === 0) {
+    extraThumbnails.push('https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80');
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -271,7 +278,7 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
               <ArrowRight className="h-4 w-4" />
             </button>
             <button type="button"
-              onClick={() => setCartDrawerOpen(false)}
+              onClick={() => { setCartDrawerOpen(false); }}
               className="cursor-pointer w-full text-center text-xs font-bold text-gray-500 hover:text-gray-700 py-2"
             >
               Continue Shopping
@@ -297,7 +304,11 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
         {/* Left: Image Gallery */}
         <div className="md:col-span-6 space-y-4">
           <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border border-gray-150 relative">
-            <img src={activeImage} alt={product.name} className="h-full w-full object-cover transition-all" />
+            {isVideo(activeImage) ? (
+              <video src={activeImage} controls className="h-full w-full object-cover transition-all" autoPlay />
+            ) : (
+              <img src={activeImage} alt={product.name} className="h-full w-full object-cover transition-all" />
+            )}
             {product.stock > 0 ? (
               <span className="absolute top-4 left-4 text-[10px] font-bold uppercase bg-emerald-500 text-white px-3 py-1 rounded-full shadow-sm z-10">
                 In Stock
@@ -315,16 +326,28 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            {extraThumbnails.map((img, i) => (
-              <button type="button"
-                key={i}
-                onClick={() => setActiveImage(img)}
-                className={`cursor-pointer rounded-xl overflow-hidden border-2 aspect-square bg-gray-50 transition-all ${activeImage === img ? 'border-violet-600 scale-[1.02]' : 'border-gray-200 hover:border-violet-400'}`}
-              >
-                <img src={img} alt="Detail" className="h-full w-full object-cover" />
-              </button>
-            ))}
+          <div className="grid grid-cols-4 gap-3">
+            {extraThumbnails.map((mediaUrl, i) => {
+              const isVid = isVideo(mediaUrl);
+              return (
+                <button type="button"
+                  key={i}
+                  onClick={() => setActiveImage(mediaUrl)}
+                  className={`cursor-pointer rounded-xl overflow-hidden border-2 aspect-square bg-gray-50 transition-all relative ${activeImage === mediaUrl ? 'border-violet-600 scale-[1.02]' : 'border-gray-200 hover:border-violet-400'}`}
+                >
+                  {isVid ? (
+                    <div className="h-full w-full relative flex items-center justify-center bg-slate-900">
+                      <video src={mediaUrl} className="h-full w-full object-cover opacity-60" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-white text-[9px] bg-black/60 px-1.5 py-0.5 rounded font-mono font-bold">▶ Video</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <img src={mediaUrl} alt="Detail" className="h-full w-full object-cover" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -414,6 +437,34 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
               <MessageSquare className="h-4 w-4" />
               Chat with Vendor on WhatsApp
             </a>
+          </div>
+
+          {/* Product Options / Action media toggle block */}
+          <div className="space-y-3.5 border-t pt-4 border-gray-100">
+            <span className="block text-[10px] uppercase font-bold text-gray-500 tracking-wider">Product Options / Action</span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => product.images?.[0] && setActiveImage(product.images[0])}
+                className={`cursor-pointer px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+                  !isVideo(activeImage) ? 'bg-violet-50 border-violet-300 text-violet-700 shadow-sm' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                View Images Option
+              </button>
+              {product.video && (
+                <button
+                  type="button"
+                  onClick={() => setActiveImage(product.video)}
+                  className={`cursor-pointer px-4 py-2 text-xs font-bold rounded-xl border flex items-center gap-1.5 transition-all ${
+                    isVideo(activeImage) ? 'bg-violet-50 border-violet-300 text-violet-700 shadow-sm' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                  Play Video Option
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Benefits */}

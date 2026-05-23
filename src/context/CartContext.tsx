@@ -136,6 +136,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: id,
       name: prod?.name || 'Loading Wishlist...',
       price: prod?.price || 0,
+      category: prod?.category || 'featured',
+      brand: prod?.brand || 'Omni Bazaar',
+      description: prod?.description || '',
+      images: prod?.images && prod.images.length ? prod.images : [prod?.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80'],
+      video: prod?.video || '',
       imageUrl: prod?.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80'
     };
   });

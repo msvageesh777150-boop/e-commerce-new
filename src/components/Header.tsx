@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Heart, Globe, LogOut, LayoutDashboard, User, Search, Store } from 'lucide-react';
 import { useLanguage, LANGUAGES, LanguageCode } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +25,14 @@ export default function Header({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [categoriesDropdownOpen, setCategoriesDropdownOpen] = useState(false);
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => setCategoriesList(data.categories || []))
+      .catch(err => console.error(err));
+  }, []);
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -87,26 +95,31 @@ export default function Header({
 
               {categoriesDropdownOpen && (
                 <div className="absolute top-full left-0 w-44 bg-white border border-gray-150 rounded-xl shadow-lg py-1.5 z-20">
-                  {[
-                    { key: 'all', label: 'All Catalog' },
-                    { key: 'electronics', label: 'Electronics' },
-                    { key: 'fashion', label: 'Fashion' },
-                    { key: 'home_living', label: 'Home & Living' },
-                    { key: 'fitness', label: 'Fitness' },
-                    { key: 'books', label: 'Books' }
-                  ].map((cat) => (
+                  <button type="button"
+                    onClick={() => {
+                      if (onSelectCategory) {
+                        onSelectCategory('all');
+                      }
+                      onNavigateTo('shop');
+                      setCategoriesDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-violet-50 hover:text-violet-750 transition-colors cursor-pointer"
+                  >
+                    All Catalog
+                  </button>
+                  {categoriesList.map((cat) => (
                     <button type="button"
-                      key={cat.key}
+                      key={cat.id}
                       onClick={() => {
                         if (onSelectCategory) {
-                          onSelectCategory(cat.key);
+                          onSelectCategory(cat.slug);
                         }
                         onNavigateTo('shop');
                         setCategoriesDropdownOpen(false);
                       }}
-                      className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-violet-50 hover:text-violet-750 transition-colors cursor-pointer"
+                      className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-violet-50 hover:text-violet-750 transition-colors cursor-pointer capitalize"
                     >
-                      {cat.label}
+                      {cat.name}
                     </button>
                   ))}
                 </div>

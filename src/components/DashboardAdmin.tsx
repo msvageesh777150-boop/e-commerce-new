@@ -30,7 +30,9 @@ import {
   Truck,
   History,
   UserPlus,
-  Loader2
+  Loader2,
+  Store,
+  Search
 } from 'lucide-react';
 
 interface DashboardAdminProps {
@@ -41,7 +43,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
   const { token, logout, user } = useAuth();
   const { t } = useLanguage();
 
-  const [activeTab, setActiveTab] = useState<'console' | 'approvals' | 'categories' | 'admins' | 'diagnostics' | 'logistics'>('console');
+  const [activeTab, setActiveTab] = useState<'console' | 'approvals' | 'categories' | 'admins' | 'diagnostics' | 'logistics' | 'vendors'>('console');
   
   // Mobile sidebar visibility
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -49,6 +51,15 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
   // Users data (Management table)
   const [usersList, setUsersList] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Vendors states
+  const [vendorsList, setVendorsList] = useState<any[]>([]);
+  const [loadingVendors, setLoadingVendors] = useState(false);
+  const [selectedVendor, setSelectedVendor] = useState<any | null>(null);
+  const [vendorProductsList, setVendorProductsList] = useState<any[]>([]);
+  const [vendorStats, setVendorStats] = useState<any | null>(null);
+  const [selectedVendorCategory, setSelectedVendorCategory] = useState<string>('all');
+  const [vendorSearchQuery, setVendorSearchQuery] = useState('');
 
   // Audits data
   const [vendorRequests, setVendorRequests] = useState<any[]>([]);
@@ -112,6 +123,67 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
     sqlInstructions: string;
   } | null>(null);
 
+  const fetchVendors = async () => {
+    setLoadingVendors(true);
+    try {
+      const res = await fetch('/api/admin/vendors', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setVendorsList(data.vendors || []);
+      }
+    } catch (e) {
+      console.error(e);
+      addToast('Vendors Fetch Error', 'Could not retrieve registered vendors.', 'error');
+    } finally {
+      setLoadingVendors(false);
+    }
+  };
+
+  const fetchVendorDetails = async (vendorId: string) => {
+    try {
+      const res = await fetch(`/api/admin/vendors/${vendorId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedVendor(data.vendor);
+        setVendorStats(data.stats);
+        setVendorProductsList(data.products || []);
+      }
+    } catch (e) {
+      console.error(e);
+      addToast('Vendor Details Error', 'Could not retrieve detailed vendor logs.', 'error');
+    }
+  };
+
+  const handleToggleProductVisibility = async (productId: string) => {
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/toggle-visibility`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        addToast(
+          data.disabledByAdmin ? 'Product Disabled' : 'Product Enabled',
+          data.disabledByAdmin 
+            ? 'The product has been hidden from the public marketplace.' 
+            : 'The product is now active and visible to customers.',
+          data.disabledByAdmin ? 'error' : 'success'
+        );
+        // Refresh product list
+        if (selectedVendor) {
+          fetchVendorDetails(selectedVendor.id);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      addToast('Toggle Visibility Error', 'Network sync failed.', 'error');
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchRequests();
@@ -120,6 +192,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
     fetchSupabaseStatus();
     fetchLogisticsData();
     fetchAnalyticsData();
+    fetchVendors();
   }, []);
 
   const fetchAnalyticsData = async () => {
@@ -748,6 +821,24 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             <span>Categories & Brands</span>
           </button>
 
+          {/* Vendors Module option */}
+          <button type="button"
+            onClick={() => {
+              setActiveTab('vendors');
+              setSelectedVendor(null);
+              setMobileSidebarOpen(false);
+              fetchVendors();
+            }}
+            className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all gap-3 ${
+              activeTab === 'vendors' 
+                ? 'bg-indigo-600 text-white shadow-md font-bold' 
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Store className="h-4 w-4" />
+            <span>Vendors</span>
+          </button>
+
           {/* Credentials creation node module option */}
           <button type="button"
             onClick={() => {
@@ -838,6 +929,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
               {activeTab === 'admins' && 'Administrative Deployment'}
               {activeTab === 'diagnostics' && 'System Diagnostics & Snapshots'}
               {activeTab === 'logistics' && 'Logistics Fleet & QR Tracking'}
+              {activeTab === 'vendors' && (selectedVendor ? 'Vendor Ledger Details' : 'Platform Vendor Management')}
             </h2>
           </div>
 
@@ -1229,6 +1321,12 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                           <div>
                             <p className="text-gray-400 font-semibold uppercase text-[9px]">Registration No.</p>
                             <p className="font-bold text-gray-800 mt-0.5 font-mono">{selectedRequest.regNumber || 'Pending Filing'}</p>
+                          </div>
+                          <div className="col-span-2 border-t border-gray-200/50 pt-2.5">
+                            <p className="text-gray-400 font-semibold uppercase text-[9px]">Business Category</p>
+                            <p className="font-extrabold text-indigo-700 mt-0.5 capitalize text-xs tracking-wider">
+                              {selectedRequest.businessCategory?.replace(/-/g, ' ') || 'Uncategorized'}
+                            </p>
                           </div>
                           <div className="col-span-2 border-t border-gray-200/50 pt-2.5">
                             <p className="text-gray-400 font-semibold uppercase text-[9px]">GSTIN</p>
@@ -2029,6 +2127,530 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                 </div>
               </div>
 
+            </div>
+          )}
+
+          {/* TAB 7: VENDOR MANAGEMENT & PRODUCT MODERATION */}
+          {activeTab === 'vendors' && (
+            <div className="space-y-8 animate-fade-in font-sans">
+              {selectedVendor ? (
+                /* Sub-view: Vendor Information Page */
+                <div className="space-y-8 animate-fade-in">
+                  {/* Header with Back Button */}
+                  <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-gray-200/85 shadow-xs">
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedVendor(null)}
+                        className="cursor-pointer font-bold text-xs text-slate-600 hover:text-indigo-600 flex items-center gap-1.5 transition-colors bg-slate-50 hover:bg-slate-100 px-4 py-2.5 rounded-xl border border-gray-200"
+                      >
+                        <ArrowUpRight className="h-4 w-4 rotate-270" />
+                        <span>Back to Vendors List</span>
+                      </button>
+                      <div>
+                        <h4 className="text-base font-extrabold text-gray-800">
+                          {selectedVendor.request?.storeName || 'Vendor Profile'}
+                        </h4>
+                        <p className="text-[10px] text-gray-400 font-mono mt-0.5 select-all">
+                          Vendor ID: {selectedVendor.id}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <span className={`px-3 py-1 rounded-full font-mono font-extrabold text-[10px] uppercase border tracking-wider ${
+                        selectedVendor.isSuspended 
+                          ? 'bg-red-50 text-red-700 border-red-200' 
+                          : selectedVendor.request?.status === 'approved'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        {selectedVendor.isSuspended ? '⚠️ SUSPENDED' : `● STATUS: ${selectedVendor.request?.status?.toUpperCase() || 'PENDING'}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Vendor Details Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Basic Info Card */}
+                    <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200/85 shadow-xs space-y-6">
+                      <div className="border-b pb-3.5 border-gray-100">
+                        <h5 className="font-extrabold text-sm text-gray-800 uppercase tracking-wider">
+                          Corporate Registration Details
+                        </h5>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Verified company registration and taxation file.</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-xs text-gray-700">
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Owner / Representative Name</p>
+                          <p className="font-bold text-gray-800 mt-1">{selectedVendor.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Store / Brand Name</p>
+                          <p className="font-bold text-gray-800 mt-1">{selectedVendor.request?.storeName || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Registered Email</p>
+                          <p className="font-bold text-gray-800 mt-1 font-mono select-all">{selectedVendor.email}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Business Phone</p>
+                          <p className="font-bold text-gray-800 mt-1 font-mono select-all">{selectedVendor.request?.businessPhone || selectedVendor.phone || 'N/A'}</p>
+                        </div>
+                        <div className="sm:col-span-2 border-t border-gray-100 pt-3">
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Registered Business Address</p>
+                          <p className="font-bold text-gray-800 mt-1 leading-relaxed">
+                            {selectedVendor.request?.address || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">District</p>
+                          <p className="font-bold text-gray-800 mt-1">{selectedVendor.request?.district || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">State</p>
+                          <p className="font-bold text-gray-800 mt-1">{selectedVendor.request?.state || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Pincode</p>
+                          <p className="font-bold text-gray-800 mt-1 font-mono">{selectedVendor.request?.pincode || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Business Category</p>
+                          <p className="font-bold mt-1 text-indigo-650 uppercase tracking-wider text-[11px] capitalize">
+                            {selectedVendor.request?.businessCategory?.replace(/-/g, ' ') || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">GSTIN Number</p>
+                          <p className="font-bold text-gray-800 mt-1 font-mono select-all uppercase">{selectedVendor.request?.gstNumber || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Registration Number</p>
+                          <p className="font-bold text-gray-800 mt-1 font-mono select-all uppercase">{selectedVendor.request?.regNumber || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Verification ID (Request ID)</p>
+                          <p className="font-bold text-gray-850 mt-1 font-mono select-all">{selectedVendor.request?.id || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Geographic Coordinates</p>
+                          <p className="font-bold text-gray-850 mt-1 font-mono">
+                            Lat: {selectedVendor.request?.latitude || '0.0'}, Long: {selectedVendor.request?.longitude || '0.0'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Join Date</p>
+                          <p className="font-bold text-gray-800 mt-1">
+                            {selectedVendor.createdAt ? new Date(selectedVendor.createdAt).toLocaleDateString() : 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 font-semibold uppercase text-[9px] tracking-wider">Approval Date</p>
+                          <p className="font-bold text-gray-800 mt-1">
+                            {selectedVendor.request?.updatedAt ? new Date(selectedVendor.request.updatedAt).toLocaleDateString() : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Stats Summary Panel */}
+                    <div className="space-y-6">
+                      <div className="bg-white p-6 rounded-2xl border border-gray-200/85 shadow-xs space-y-6">
+                        <div className="border-b pb-3.5 border-gray-100">
+                          <h5 className="font-extrabold text-sm text-gray-800 uppercase tracking-wider">
+                            Tenancy Performance Stats
+                          </h5>
+                          <p className="text-[11px] text-gray-400 mt-0.5">Real-time dynamic checkout aggregates.</p>
+                        </div>
+
+                        {vendorStats ? (
+                          <div className="space-y-4">
+                            {/* Revenue Card */}
+                            <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100 flex items-center justify-between">
+                              <div>
+                                <span className="text-[9px] font-mono text-emerald-600 font-bold uppercase tracking-wider">Gross Sales</span>
+                                <h4 className="text-2xl font-extrabold text-emerald-800 font-mono mt-0.5">
+                                  ₹{vendorStats.revenue?.toLocaleString('en-IN') || 0}
+                                </h4>
+                              </div>
+                              <div className="h-10 w-10 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600">
+                                <Award className="h-5 w-5" />
+                              </div>
+                            </div>
+
+                            {/* Total Orders Card */}
+                            <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 flex items-center justify-between">
+                              <div>
+                                <span className="text-[9px] font-mono text-indigo-600 font-bold uppercase tracking-wider">Total Orders</span>
+                                <h4 className="text-2xl font-extrabold text-indigo-800 font-mono mt-0.5">
+                                  {vendorStats.totalOrders || 0}
+                                </h4>
+                              </div>
+                              <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-650">
+                                <Layers className="h-5 w-5" />
+                              </div>
+                            </div>
+
+                            {/* Total Products Card */}
+                            <div className="p-4 bg-slate-50 rounded-xl border flex items-center justify-between">
+                              <div>
+                                <span className="text-[9px] font-mono text-slate-400 font-bold uppercase tracking-wider">Total Products</span>
+                                <h4 className="text-2xl font-extrabold text-slate-800 font-mono mt-0.5">
+                                  {vendorStats.totalProducts || 0}
+                                </h4>
+                              </div>
+                              <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-650">
+                                <Users className="h-5 w-5" />
+                              </div>
+                            </div>
+
+                            {/* Orders breakdown */}
+                            <div className="grid grid-cols-3 gap-2.5 pt-2 font-mono text-center">
+                              <div className="p-2.5 bg-yellow-50/50 border border-yellow-100 rounded-lg">
+                                <span className="text-[8px] text-yellow-605 font-bold uppercase block tracking-wider">Pending</span>
+                                <span className="text-sm font-extrabold text-yellow-800 mt-1 block">{vendorStats.pendingOrders || 0}</span>
+                              </div>
+                              <div className="p-2.5 bg-emerald-50/50 border border-emerald-100 rounded-lg">
+                                <span className="text-[8px] text-emerald-600 font-bold uppercase block tracking-wider">Delivered</span>
+                                <span className="text-sm font-extrabold text-emerald-800 mt-1 block">{vendorStats.deliveredOrders || 0}</span>
+                              </div>
+                              <div className="p-2.5 bg-red-50/50 border border-red-100 rounded-lg">
+                                <span className="text-[8px] text-red-650 font-bold uppercase block tracking-wider">Cancelled</span>
+                                <span className="text-sm font-extrabold text-red-800 mt-1 block">{vendorStats.cancelledOrders || 0}</span>
+                              </div>
+                            </div>
+
+                            {/* Average ratings */}
+                            <div className="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-700">
+                              <span className="text-gray-400 font-semibold">Store Reputation Rating</span>
+                              <div className="flex items-center gap-1.5 font-bold font-mono text-gray-805">
+                                <span className="text-amber-500 font-sans text-sm">★</span>
+                                <span>{vendorStats.rating || 5.0} / 5.0</span>
+                              </div>
+                            </div>
+
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400 italic">Calculating metrics...</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Vendor Catalog Moderation Section */}
+                  <div className="bg-white p-6 rounded-2xl border border-gray-200/85 shadow-xs space-y-6">
+                    <div className="border-b pb-4 border-gray-100">
+                      <h4 className="text-sm font-bold font-display text-gray-850 uppercase tracking-wider">
+                        Marketplace Product Catalog Moderation
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                        Audit visibility states and toggle availability switches to block or allow products on customer marketplace search feeds.
+                      </p>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      {vendorProductsList.length === 0 ? (
+                        <div className="p-12 text-center text-xs text-gray-500 font-mono italic">
+                          No products uploaded by this vendor.
+                        </div>
+                      ) : (
+                        <table className="w-full text-left text-xs align-middle text-gray-750">
+                          <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b">
+                            <tr>
+                              <th className="py-4 px-6">Product Details</th>
+                              <th className="py-4 px-6">Product ID</th>
+                              <th className="py-4 px-6">Category / Brand</th>
+                              <th className="py-4 px-6">Price</th>
+                              <th className="py-4 px-6">Stock Availability</th>
+                              <th className="py-4 px-6">Rating</th>
+                              <th className="py-4 px-6">Status</th>
+                              <th className="py-4 px-6 text-center">Marketplace Visibility</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {vendorProductsList.map((prod) => (
+                              <tr key={prod.id} className="hover:bg-slate-50/50 transition-colors">
+                                {/* Product details image/name */}
+                                <td className="py-4 px-6">
+                                  <div className="flex items-center gap-3">
+                                    <img
+                                      src={prod.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100&q=80'}
+                                      alt={prod.name}
+                                      className="h-10 w-10 rounded-lg object-cover bg-gray-50 border border-gray-200 shrink-0"
+                                    />
+                                    <div>
+                                      <h5 className="font-bold text-gray-805 text-xs sm:text-sm">{prod.name}</h5>
+                                      <p className="text-[10px] text-gray-400 font-sans italic line-clamp-1 mt-0.5">"{prod.description}"</p>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Product ID */}
+                                <td className="py-4 px-6 font-mono text-[10.5px] select-all">
+                                  {prod.id}
+                                </td>
+
+                                {/* Category/Brand */}
+                                <td className="py-4 px-6 font-mono text-[10.5px]">
+                                  <span className="capitalize">{prod.category?.replace(/-/g, ' ')}</span>
+                                  <p className="text-[9px] text-gray-400 font-bold tracking-wide uppercase mt-0.5">{prod.brand}</p>
+                                </td>
+
+                                {/* Price */}
+                                <td className="py-4 px-6 font-mono font-bold text-gray-800 text-sm">
+                                  ₹{prod.price?.toLocaleString('en-IN')}
+                                </td>
+
+                                {/* Stock */}
+                                <td className="py-4 px-6">
+                                  <span className={`px-2 py-0.5 rounded-md font-mono text-[9px] font-bold border ${
+                                    prod.stock > 5 
+                                      ? 'bg-slate-100 border-slate-200 text-slate-700' 
+                                      : prod.stock > 0
+                                        ? 'bg-amber-50 border-amber-150 text-amber-700'
+                                        : 'bg-red-50 border-red-150 text-red-700'
+                                  }`}>
+                                    {prod.stock > 0 ? `${prod.stock} units` : 'Out of Stock'}
+                                  </span>
+                                </td>
+
+                                {/* Rating */}
+                                <td className="py-4 px-6 font-mono font-bold text-gray-600">
+                                  ★ {prod.ratings || 5.0}
+                                </td>
+
+                                {/* Status */}
+                                <td className="py-4 px-6">
+                                  <span className={`px-2.5 py-0.5 rounded-full inline-block font-mono font-extrabold text-[9px] uppercase border ${
+                                    prod.disabledByAdmin 
+                                      ? 'bg-red-55 text-red-700 border-red-150' 
+                                      : 'bg-emerald-50 text-emerald-700 border-emerald-150'
+                                  }`}>
+                                    {prod.disabledByAdmin ? '⚠️ DISABLED' : '● ACTIVE'}
+                                  </span>
+                                </td>
+
+                                {/* Marketplace Visibility Switch */}
+                                <td className="py-4 px-6 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleProductVisibility(prod.id)}
+                                    className={`cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10.5px] font-black uppercase tracking-wider border transition-all ${
+                                      !prod.disabledByAdmin
+                                        ? 'bg-indigo-600 hover:bg-indigo-750 text-white border-indigo-750 shadow-xs'
+                                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                                    }`}
+                                  >
+                                    {!prod.disabledByAdmin ? (
+                                      <>
+                                        <Check className="h-3.5 w-3.5 text-white" />
+                                        <span>ACTIVE (ON)</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <X className="h-3.5 w-3.5 text-slate-400" />
+                                        <span>HIDDEN (OFF)</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </td>
+
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+              ) : (
+                /* Sub-view: Vendors List View */
+                <div className="space-y-8 animate-fade-in">
+                  {/* Category Filter Cards */}
+                  <div className="space-y-3">
+                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest block">
+                      Category Organization
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                      {[
+                        { name: 'All Categories', slug: 'all', count: vendorsList.length },
+                        ...categories.map(cat => ({
+                          name: cat.name,
+                          slug: cat.slug,
+                          count: vendorsList.filter(v => v.request?.businessCategory === cat.slug).length
+                        }))
+                      ].map((catCard) => {
+                        const isSelected = selectedVendorCategory === catCard.slug;
+                        return (
+                          <div
+                            key={catCard.slug}
+                            onClick={() => setSelectedVendorCategory(catCard.slug)}
+                            className={`cursor-pointer p-4 rounded-2xl border transition-all flex flex-col justify-between hover:scale-[1.02] shadow-xs select-none ${
+                              isSelected 
+                                ? 'border-indigo-600 bg-slate-900 text-white scale-[1.02] shadow-md ring-2 ring-indigo-500/20' 
+                                : 'border-gray-200 bg-white text-slate-800'
+                            }`}
+                          >
+                            <h5 className="font-extrabold text-xs leading-tight uppercase tracking-wider">
+                              {catCard.name}
+                            </h5>
+                            <div className="flex items-center justify-between mt-4">
+                              <span className="text-[9px] font-mono opacity-60">Registered</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black font-mono tracking-tight ${
+                                isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 border border-gray-200'
+                              }`}>
+                                {catCard.count}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Advanced Search Bar */}
+                  <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+                    <div className="flex-1 max-w-lg relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by Name, Store, ID, Email, GST, Category..."
+                        value={vendorSearchQuery}
+                        onChange={(e) => setVendorSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:border-indigo-500 outline-hidden bg-slate-50 focus:bg-white transition-all font-semibold text-gray-800"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={fetchVendors}
+                        className="cursor-pointer text-xs font-bold text-indigo-650 hover:text-indigo-850 px-4 py-2.5 bg-slate-50 border border-gray-200 rounded-xl transition-all active:scale-95"
+                      >
+                        Refresh Network Logs
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Vendors Grid */}
+                  {loadingVendors ? (
+                    <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-700 mb-2" />
+                      <p className="text-xs text-gray-400 font-mono">Querying registered vendor nodes...</p>
+                    </div>
+                  ) : (
+                    (() => {
+                      // Client-side filtering logic
+                      const query = vendorSearchQuery.toLowerCase().trim();
+                      const filteredVendors = vendorsList.filter((vendor) => {
+                        // Category filter
+                        if (selectedVendorCategory !== 'all') {
+                          if (vendor.request?.businessCategory !== selectedVendorCategory) {
+                            return false;
+                          }
+                        }
+                        // Search query filter
+                        if (query) {
+                          const matches =
+                            vendor.name?.toLowerCase().includes(query) ||
+                            vendor.request?.storeName?.toLowerCase().includes(query) ||
+                            vendor.id?.toLowerCase().includes(query) ||
+                            vendor.email?.toLowerCase().includes(query) ||
+                            vendor.phone?.toLowerCase().includes(query) ||
+                            vendor.request?.gstNumber?.toLowerCase().includes(query) ||
+                            vendor.request?.id?.toLowerCase().includes(query) ||
+                            vendor.request?.regNumber?.toLowerCase().includes(query) ||
+                            vendor.request?.businessCategory?.toLowerCase().includes(query) ||
+                            vendor.request?.legalName?.toLowerCase().includes(query);
+                          if (!matches) return false;
+                        }
+                        return true;
+                      });
+
+                      if (filteredVendors.length === 0) {
+                        return (
+                          <div className="text-center py-20 bg-white rounded-2xl border border-gray-200 text-gray-400 italic text-xs font-mono">
+                            No matching vendors found inside this category node.
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {filteredVendors.map((vItem) => {
+                            return (
+                              <div
+                                key={vItem.id}
+                                onClick={() => fetchVendorDetails(vItem.id)}
+                                className={`bg-white border rounded-2xl p-5 hover:shadow-lg transition-all flex flex-col justify-between hover:scale-[1.01] cursor-pointer relative group ${
+                                  vItem.status === 'suspended' ? 'border-red-200 bg-red-50/10' : 'border-gray-200 shadow-xs'
+                                }`}
+                              >
+                                <div className="space-y-3.5">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="h-10 w-10 bg-indigo-50 border border-indigo-150 rounded-xl flex items-center justify-center text-indigo-700 font-extrabold text-sm shrink-0">
+                                      {vItem.request?.storeName?.charAt(0).toUpperCase() || vItem.name?.charAt(0).toUpperCase() || '?'}
+                                    </div>
+                                    <span className={`px-2 py-0.5 rounded-full font-mono font-black text-[8px] tracking-wide uppercase border ${
+                                      vItem.status === 'suspended'
+                                        ? 'bg-red-50 border-red-150 text-red-700'
+                                        : vItem.status === 'approved'
+                                          ? 'bg-emerald-50 border-emerald-150 text-emerald-700'
+                                          : 'bg-amber-50 border-amber-150 text-amber-700'
+                                    }`}>
+                                      {vItem.status === 'suspended' ? '⚠️ SUSPENDED' : `● ${vItem.status}`}
+                                    </span>
+                                  </div>
+
+                                  <div className="space-y-0.5">
+                                    <h4 className="font-extrabold text-gray-800 text-sm group-hover:text-indigo-650 truncate transition-colors" title={vItem.request?.storeName || 'Store name unconfigured'}>
+                                      {vItem.request?.storeName || 'Unregistered Store'}
+                                    </h4>
+                                    <p className="text-[10px] text-gray-400 font-mono tracking-widest select-all">{vItem.id}</p>
+                                  </div>
+
+                                  <div className="pt-2 border-t border-dashed border-gray-200 space-y-1 text-[11px] leading-relaxed text-gray-655 font-medium">
+                                    <p className="flex justify-between gap-2.5">
+                                      <span className="text-gray-400">Owner:</span>
+                                      <span className="font-bold text-gray-700 truncate">{vItem.name}</span>
+                                    </p>
+                                    <p className="flex justify-between gap-2.5 select-all">
+                                      <span className="text-gray-400">Email:</span>
+                                      <span className="font-bold text-gray-750 truncate">{vItem.email}</span>
+                                    </p>
+                                    <p className="flex justify-between gap-2.5">
+                                      <span className="text-gray-400">Category:</span>
+                                      <span className="font-bold text-indigo-700 uppercase tracking-wider text-[9px]">
+                                        {vItem.request?.businessCategory || 'Uncategorized'}
+                                      </span>
+                                    </p>
+                                    {vItem.request?.gstNumber && (
+                                      <p className="flex justify-between gap-2.5 select-all uppercase">
+                                        <span className="text-gray-400 font-sans">GSTIN:</span>
+                                        <span className="font-bold text-gray-700 font-mono">{vItem.request.gstNumber}</span>
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center text-[10.5px]">
+                                  <span className="text-gray-400 font-semibold">
+                                    Joined {vItem.createdAt ? new Date(vItem.createdAt).toLocaleDateString() : 'N/A'}
+                                  </span>
+                                  <span className="text-indigo-650 font-bold hover:underline inline-flex items-center gap-1">
+                                    View Audit details <ArrowUpRight className="h-3.5 w-3.5" />
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+              )}
             </div>
           )}
 

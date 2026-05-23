@@ -3,24 +3,73 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { Sparkles, ArrowRight, ShoppingCart, Heart, Star, Search, Flame, MapPin, Loader2 } from 'lucide-react';
 
+const getCategoryImageUrl = (slug: string) => {
+  const normalized = slug.toLowerCase();
+  if (normalized.includes('electronic') || normalized.includes('mobile')) {
+    return 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80';
+  }
+  if (normalized.includes('fashion') || normalized.includes('apparel') || normalized.includes('clothing')) {
+    return 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=300&q=80';
+  }
+  if (normalized.includes('spice') || normalized.includes('herb')) {
+    return 'https://images.unsplash.com/photo-1596790011558-b13c6c1eae74?w=300&q=80';
+  }
+  if (normalized.includes('grocery') || normalized.includes('pantry') || normalized.includes('food')) {
+    return 'https://images.unsplash.com/photo-1610832958506-ee5633619144?w=300&q=80';
+  }
+  return 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&q=80';
+};
+
+const getCategoryBgColor = (slug: string) => {
+  const normalized = slug.toLowerCase();
+  if (normalized.includes('electronic') || normalized.includes('mobile')) {
+    return 'bg-linear-to-br from-violet-50 to-indigo-50 border-violet-100';
+  }
+  if (normalized.includes('fashion') || normalized.includes('apparel')) {
+    return 'bg-linear-to-br from-fuchsia-50 to-pink-50 border-fuchsia-100';
+  }
+  if (normalized.includes('spice') || normalized.includes('herb')) {
+    return 'bg-linear-to-br from-amber-50 to-yellow-50 border-amber-100';
+  }
+  if (normalized.includes('grocery') || normalized.includes('food')) {
+    return 'bg-linear-to-br from-emerald-50 to-teal-50 border-emerald-100';
+  }
+  return 'bg-linear-to-br from-slate-50 to-zinc-50 border-slate-150';
+};
+
 interface HomePageProps {
   onNavigateTo: (page: string) => void;
   searchQuery: string;
   onSelectProductId?: (productId: string) => void;
+  onSelectCategory?: (category: string) => void;
 }
 
-export default function HomePage({ onNavigateTo, searchQuery, onSelectProductId }: HomePageProps) {
+export default function HomePage({ onNavigateTo, searchQuery, onSelectProductId, onSelectCategory }: HomePageProps) {
   const { t } = useLanguage();
   const { addToCart, toggleWishlist, wishlist } = useCart();
 
   const [products, setProducts] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
 
   useEffect(() => {
     fetchProducts();
     fetchReviewsSummary();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/categories');
+      if (res.ok) {
+        const data = await res.json();
+        setCategoriesList(data.categories || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -111,49 +160,28 @@ export default function HomePage({ onNavigateTo, searchQuery, onSelectProductId 
           {t('home.curated_categories')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div
-            onClick={() => onNavigateTo('shop')}
-            className="cursor-pointer p-4 bg-linear-to-br from-violet-50 to-indigo-50 border border-violet-100 rounded-2xl hover:scale-[1.02] shadow-xs text-center space-y-2.5 transition-all"
-          >
-            <img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80" alt="Electronics" className="h-14 w-14 rounded-full mx-auto object-cover border-2 border-violet-100 shadow-sm" />
-            <div>
-              <h5 className="font-bold text-gray-805 text-sm leading-tight">{t('home.electronics')}</h5>
-              <p className="text-[9px] text-gray-400 font-mono mt-0.5 uppercase tracking-wider">{t('home.mapped_tenant')}</p>
-            </div>
-          </div>
-
-          <div
-            onClick={() => onNavigateTo('shop')}
-            className="cursor-pointer p-4 bg-linear-to-br from-fuchsia-50 to-pink-50 border border-fuchsia-100 rounded-2xl hover:scale-[1.02] shadow-xs text-center space-y-2.5 transition-all"
-          >
-            <img src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=300&q=80" alt="Apparel" className="h-14 w-14 rounded-full mx-auto object-cover border-2 border-fuchsia-100 shadow-sm" />
-            <div>
-              <h5 className="font-bold text-gray-805 text-sm leading-tight">{t('home.fashion')}</h5>
-              <p className="text-[9px] text-gray-400 font-mono mt-0.5 uppercase tracking-wider">{t('home.mapped_tenant')}</p>
-            </div>
-          </div>
-
-          <div
-            onClick={() => onNavigateTo('shop')}
-            className="cursor-pointer p-4 bg-linear-to-br from-amber-50 to-yellow-50 border border-amber-100 rounded-2xl hover:scale-[1.02] shadow-xs text-center space-y-2.5 transition-all"
-          >
-            <img src="https://images.unsplash.com/photo-1596790011558-b13c6c1eae74?w=300&q=80" alt="Spices" className="h-14 w-14 rounded-full mx-auto object-cover border-2 border-amber-100 shadow-sm" />
-            <div>
-              <h5 className="font-bold text-gray-805 text-sm leading-tight">{t('home.herbs')}</h5>
-              <p className="text-[9px] text-gray-400 font-mono mt-0.5 uppercase tracking-wider">{t('home.mapped_tenant')}</p>
-            </div>
-          </div>
-
-          <div
-            onClick={() => onNavigateTo('shop')}
-            className="cursor-pointer p-4 bg-linear-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl hover:scale-[1.02] shadow-xs text-center space-y-2.5 transition-all"
-          >
-            <img src="https://images.unsplash.com/photo-1610832958506-ee5633619144?w=300&q=80" alt="Grocery" className="h-14 w-14 rounded-full mx-auto object-cover border-2 border-emerald-100 shadow-sm" />
-            <div>
-              <h5 className="font-bold text-gray-805 text-sm leading-tight">{t('home.grocery')}</h5>
-              <p className="text-[9px] text-gray-400 font-mono mt-0.5 uppercase tracking-wider">{t('home.mapped_tenant')}</p>
-            </div>
-          </div>
+          {categoriesList.map((cat) => {
+            const bgClass = getCategoryBgColor(cat.slug);
+            const imgUrl = getCategoryImageUrl(cat.slug);
+            return (
+              <div
+                key={cat.id}
+                onClick={() => {
+                  if (onSelectCategory) {
+                    onSelectCategory(cat.slug);
+                  }
+                  onNavigateTo('shop');
+                }}
+                className={`cursor-pointer p-4 border rounded-2xl hover:scale-[1.02] shadow-xs text-center space-y-2.5 transition-all ${bgClass}`}
+              >
+                <img src={imgUrl} alt={cat.name} className="h-14 w-14 rounded-full mx-auto object-cover border-2 shadow-sm bg-white" />
+                <div>
+                  <h5 className="font-bold text-gray-855 text-xs sm:text-sm leading-tight capitalize">{cat.name}</h5>
+                  <p className="text-[9px] text-gray-400 font-mono mt-0.5 uppercase tracking-wider">{t('home.mapped_tenant')}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 

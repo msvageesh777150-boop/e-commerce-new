@@ -74,7 +74,11 @@ let db: any = {
       name: 'iPhone 15 Pro Max',
       price: 119900,
       description: 'Experience premium titanium design, A17 Pro performance, and standard smart lenses with a massive vibrant dynamic island display.',
-      images: ['https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&q=80'],
+      images: [
+        'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&q=80',
+        'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80'
+      ],
+      video: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
       category: 'mobiles-electronics',
       brand: 'AuraTech',
       stock: 12,
@@ -680,6 +684,7 @@ app.post('/api/auth/signup', (req, res) => {
       pincode: '',
       latitude: 20.5937,
       longitude: 78.9629,
+      businessCategory: '',
       status: 'draft',
       documentUrl: '',
       remarks: 'Awaiting corporate verification documents.',
@@ -1045,7 +1050,8 @@ app.post('/api/vendor/profile/verify', (req, res) => {
     latitude,
     longitude,
     additionalDetails,
-    documentUrl
+    documentUrl,
+    businessCategory
   } = req.body;
 
   let request = db.vendor_requests.find((r: any) => r.vendorId === caller.id);
@@ -1070,6 +1076,7 @@ app.post('/api/vendor/profile/verify', (req, res) => {
   request.pincode = pincode;
   request.latitude = parseFloat(latitude) || 20.5937;
   request.longitude = parseFloat(longitude) || 78.9629;
+  request.businessCategory = businessCategory || '';
   request.status = 'pending'; // Marking as pending for admin review
   request.documentUrl = documentUrl || '';
   request.additionalDetails = additionalDetails || '';
@@ -1136,13 +1143,13 @@ app.delete('/api/admin/brands/:id', (req, res) => {
 
 // Browser Catalog Search
 app.get('/api/products', (req, res) => {
-  // Only display approved products
-  res.json({ products: db.products.filter((p: any) => p.isApproved) });
+  // Only display approved and active products
+  res.json({ products: db.products.filter((p: any) => p.isApproved && !p.disabledByAdmin) });
 });
 
 // AI-recommended Products route
 app.get('/api/products/ai-recommendations', (req, res) => {
-  const approved = db.products.filter((p: any) => p.isApproved);
+  const approved = db.products.filter((p: any) => p.isApproved && !p.disabledByAdmin);
   const sorted = [...approved].sort((a: any, b: any) => (b.ratings || 0) - (a.ratings || 0));
   const recommendations = sorted.slice(0, 3);
   res.json({ recommendations });
@@ -1249,7 +1256,7 @@ app.post('/api/vendor/products', (req, res) => {
   const vReq = db.vendor_requests.find((v: any) => v.vendorId === caller.id && v.status === 'approved');
   if (!vReq) return res.status(403).json({ error: 'Vendor profile not verified.' });
 
-  const { name, price, description, images, category, brand, stock } = req.body;
+  const { name, price, description, images, category, brand, stock, video } = req.body;
   
   const schemaName = `vendor_${vReq.storeName.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
   if (!db.schemas[schemaName]) initializeVendorSchema(vReq.storeName);
@@ -1262,6 +1269,7 @@ app.post('/api/vendor/products', (req, res) => {
     price: parseFloat(price) || 0,
     description: description || '',
     images: images && images.length ? images : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80'],
+    video: video || '',
     category,
     brand,
     stock: parseInt(stock) || 0,
@@ -1287,7 +1295,7 @@ app.put('/api/vendor/products/:id', (req, res) => {
   const vReq = db.vendor_requests.find((v: any) => v.vendorId === caller.id && v.status === 'approved');
   if (!vReq) return res.status(403).json({ error: 'Vendor not approved.' });
 
-  const { name, price, description, images, category, brand, stock } = req.body;
+  const { name, price, description, images, category, brand, stock, video } = req.body;
   const schemaName = `vendor_${vReq.storeName.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
 
   const vendorProducts = db.schemas[schemaName]?.products || [];
@@ -1295,12 +1303,18 @@ app.put('/api/vendor/products/:id', (req, res) => {
 
   if (prodIndex === -1) return res.status(404).json({ error: 'Item not in your tenancy schema.' });
 
+  // Block editing if disabled by admin
+  if (vendorProducts[prodIndex].disabledByAdmin) {
+    return res.status(403).json({ error: 'This product has been disabled by the administrator and cannot be modified.' });
+  }
+
   const updatedProd = {
     ...vendorProducts[prodIndex],
     name,
     price: parseFloat(price) || 0,
     description,
     images: images && images.length ? images : vendorProducts[prodIndex].images,
+    video: video !== undefined ? video : vendorProducts[prodIndex].video,
     category,
     brand,
     stock: parseInt(stock) || 0
@@ -1323,6 +1337,10 @@ app.delete('/api/vendor/products/:id', (req, res) => {
   const schemaName = `vendor_${vReq.storeName.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
   
   if (db.schemas[schemaName]) {
+    const prod = db.schemas[schemaName].products.find((p: any) => p.id === req.params.id);
+    if (prod && prod.disabledByAdmin) {
+      return res.status(403).json({ error: 'This product has been disabled by the administrator and cannot be deleted.' });
+    }
     db.schemas[schemaName].products = (db.schemas[schemaName].products || []).filter((p: any) => p.id !== req.params.id);
     syncVendorProductsToPublic(schemaName, caller.id, vReq.storeName);
   }
@@ -2269,6 +2287,118 @@ app.get('/api/admin/logs', (req, res) => {
   }
 
   res.json({ logs: db.activity_logs });
+});
+
+// Admin: view all registered vendors with request status and stats
+app.get('/api/admin/vendors', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+
+  if (!caller || caller.role !== 'admin') {
+    return res.status(403).json({ error: 'Access forbidden. Admin role required.' });
+  }
+
+  const vendors = db.users.filter((u: any) => u.role === 'vendor').map((u: any) => {
+    const request = db.vendor_requests.find((r: any) => r.vendorId === u.id);
+    return {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      createdAt: u.createdAt,
+      status: u.isSuspended ? 'suspended' : (request?.status || 'pending'),
+      request: request || null
+    };
+  });
+
+  res.json({ vendors });
+});
+
+// Admin: view single vendor details & dynamic statistics
+app.get('/api/admin/vendors/:id', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+
+  if (!caller || caller.role !== 'admin') {
+    return res.status(403).json({ error: 'Access forbidden. Admin role required.' });
+  }
+
+  const { id } = req.params;
+  const vendorUser = db.users.find((u: any) => u.id === id && u.role === 'vendor');
+  if (!vendorUser) {
+    return res.status(404).json({ error: 'Vendor not found.' });
+  }
+
+  const request = db.vendor_requests.find((r: any) => r.vendorId === id);
+  const vendorProducts = db.products.filter((p: any) => p.vendorId === id);
+  const vendorOrders = db.orders.filter((o: any) => o.vendorId === id);
+
+  // Calculate statistics
+  const totalProducts = vendorProducts.length;
+  const totalOrders = vendorOrders.length;
+  const revenue = vendorOrders.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0);
+  const pendingOrders = vendorOrders.filter((o: any) => o.orderStatus === 'pending' || o.orderStatus === 'confirmed' || o.orderStatus === 'processing' || o.orderStatus === 'shipped' || o.orderStatus === 'out_for_delivery').length;
+  const deliveredOrders = vendorOrders.filter((o: any) => o.orderStatus === 'delivered').length;
+  const cancelledOrders = vendorOrders.filter((o: any) => o.orderStatus === 'cancelled').length;
+
+  const totalRatingsSum = vendorProducts.reduce((sum: number, p: any) => sum + (p.ratings || 0), 0);
+  const averageRating = totalProducts > 0 ? parseFloat((totalRatingsSum / totalProducts).toFixed(1)) : 5.0;
+
+  res.json({
+    vendor: {
+      id: vendorUser.id,
+      name: vendorUser.name,
+      email: vendorUser.email,
+      phone: vendorUser.phone,
+      createdAt: vendorUser.createdAt,
+      isSuspended: !!vendorUser.isSuspended,
+      request
+    },
+    stats: {
+      totalProducts,
+      totalOrders,
+      revenue,
+      pendingOrders,
+      deliveredOrders,
+      cancelledOrders,
+      rating: averageRating
+    },
+    products: vendorProducts
+  });
+});
+
+// Admin: Toggle marketplace visibility of product (ON/OFF Toggle)
+app.post('/api/admin/products/:id/toggle-visibility', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+
+  if (!caller || caller.role !== 'admin') {
+    return res.status(403).json({ error: 'Access forbidden. Admin role required.' });
+  }
+
+  const { id } = req.params;
+  const prod = db.products.find((p: any) => p.id === id);
+  if (!prod) {
+    return res.status(404).json({ error: 'Product not found.' });
+  }
+
+  prod.disabledByAdmin = !prod.disabledByAdmin;
+
+  // Sync to vendor schema
+  const vendorRequest = db.vendor_requests.find((r: any) => r.vendorId === prod.vendorId && r.status === 'approved');
+  if (vendorRequest) {
+    const schemaName = `vendor_${vendorRequest.storeName.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
+    const schemaObj = db.schemas[schemaName];
+    if (schemaObj && schemaObj.products) {
+      const schemaProd = schemaObj.products.find((p: any) => p.id === id);
+      if (schemaProd) {
+        schemaProd.disabledByAdmin = prod.disabledByAdmin;
+      }
+    }
+  }
+
+  saveDB();
+  res.json({ success: true, disabledByAdmin: prod.disabledByAdmin, product: prod });
 });
 
 // System analysis schemas diagnostic (Admin only)

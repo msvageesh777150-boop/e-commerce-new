@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
@@ -7,15 +7,27 @@ import { ShoppingBag, Star, MapPin, Bell, CheckCircle, ShieldAlert, FileText, In
 
 export default function DashboardCustomer() {
   const { token, user, refreshProfile } = useAuth();
-  const { wishlist } = useCart();
+  const { wishlist, removeFromWishlist, addToCart } = useCart();
   const { t } = useLanguage();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'addresses' | 'reviews' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'addresses' | 'wishlist' | 'reviews' | 'profile'>('overview');
 
   const [orders, setOrders] = useState<any[]>([]);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
+
+  // Wishlist Slides mode states
+  const [wishlistLayoutMode, setWishlistLayoutMode] = useState<'grid' | 'slides'>('grid');
+  const [activeWishlistSlide, setActiveWishlistSlide] = useState(0);
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+  const [overviewMediaIndex, setOverviewMediaIndex] = useState(0);
+  const [overviewPlaying, setOverviewPlaying] = useState(false);
+  const [overviewMuted, setOverviewMuted] = useState(true);
+  const [overviewVolume, setOverviewVolume] = useState(0.7);
+  const [overviewTheater, setOverviewTheater] = useState(false);
+  const overviewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [wishlistSubImageIndex, setWishlistSubImageIndex] = useState<Record<string, number>>({});
 
   // Address inputs
   const [addrLabel, setAddrLabel] = useState('');
@@ -255,6 +267,72 @@ export default function DashboardCustomer() {
     }
   };
 
+  useEffect(() => {
+    const video = overviewVideoRef.current;
+    if (!video) return;
+    video.muted = overviewMuted;
+    video.volume = overviewVolume;
+    if (overviewPlaying && video.paused) {
+      video.play().catch(() => {});
+    }
+  }, [overviewMuted, overviewVolume, overviewPlaying, overviewMediaIndex]);
+
+  useEffect(() => {
+    const activeId = wishlist[activeWishlistSlide]?.id;
+    if (!activeId) return;
+    setWishlistSubImageIndex(prev => ({
+      ...prev,
+      [activeId]: prev[activeId] ?? 0
+    }));
+  }, [activeWishlistSlide, wishlist]);
+
+  const spotlightMedia = [
+    {
+      id: 'spotlight-video',
+      title: 'Spotlight Video Hub',
+      description: 'Discover cinema-style product stories, curated launches, and immersive motion experiences in your overview panel.',
+      type: 'video' as const,
+      src: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+      poster: 'https://images.unsplash.com/photo-1512446733611-9099a758e723?w=1200&q=80'
+    },
+    {
+      id: 'spotlight-image-1',
+      title: 'Creative Launch Gallery',
+      description: 'A polished hero image slot where side-by-side visuals and interactive media controls feel premium.',
+      type: 'image' as const,
+      src: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1200&q=80'
+    },
+    {
+      id: 'spotlight-image-2',
+      title: 'Ambient Product Showcase',
+      description: 'Toggle between curated photography and motion-driven highlight reels with elegant controls.',
+      type: 'image' as const,
+      src: 'https://images.unsplash.com/photo-1503602642458-232111445657?w=1200&q=80'
+    }
+  ];
+
+  const overviewActiveMedia = spotlightMedia[overviewMediaIndex];
+  const overviewActiveIsVideo = overviewActiveMedia.type === 'video';
+
+  const toggleOverviewPlayback = () => {
+    if (!overviewActiveIsVideo) return;
+    const video = overviewVideoRef.current;
+    if (!video) return;
+    if (overviewPlaying) {
+      video.pause();
+      setOverviewPlaying(false);
+    } else {
+      video.play().catch(() => {});
+      setOverviewPlaying(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!overviewActiveIsVideo) {
+      setOverviewPlaying(false);
+    }
+  }, [overviewActiveIsVideo]);
+
   const totalSpent = orders.reduce((sum, o) => sum + o.totalAmount, 0);
 
   return (
@@ -316,7 +394,15 @@ export default function DashboardCustomer() {
               activeTab === 'addresses' ? 'border-violet-600 text-violet-600 font-extrabold bg-violet-50/10' : 'border-transparent hover:text-gray-800'
             }`}
           >
-            ADDRESSES
+            {t('customer.addresses').toUpperCase()}
+          </button>
+          <button type="button"
+            onClick={() => setActiveTab('wishlist')}
+            className={`py-4 px-5 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'wishlist' ? 'border-violet-600 text-violet-600 font-extrabold bg-violet-50/10' : 'border-transparent hover:text-gray-800'
+            }`}
+          >
+            {t('customer.wishlist_tab').toUpperCase()} ({wishlist.length})
           </button>
           <button type="button"
             onClick={() => setActiveTab('reviews')}
@@ -324,7 +410,7 @@ export default function DashboardCustomer() {
               activeTab === 'reviews' ? 'border-violet-600 text-violet-600 font-extrabold bg-violet-50/10' : 'border-transparent hover:text-gray-800'
             }`}
           >
-            MY WISHLIST ({wishlist.length})
+            {t('customer.reviews').toUpperCase()}
           </button>
           <button type="button"
             onClick={() => setActiveTab('profile')}
@@ -363,6 +449,91 @@ export default function DashboardCustomer() {
                 <div className="p-4 bg-gray-50 border rounded-2xl shadow-2xs">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1.5">SAVED IN WALLET</p>
                   <p className="text-lg font-black text-emerald-600">₹1,024</p>
+                </div>
+              </div>
+
+              <div className={`relative overflow-hidden rounded-[2rem] border border-violet-100 shadow-xl bg-gradient-to-br from-violet-950 via-slate-950 to-slate-900 text-white mt-6 ${overviewTheater ? 'lg:px-10 lg:py-10' : 'p-6'}`}>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(129,140,248,0.35),_transparent_32%),radial-gradient(circle_at_bottom_left,_rgba(139,92,246,0.25),_transparent_30%)] blur-3xl pointer-events-none" />
+                <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr] items-center">
+                  <div className="space-y-4">
+                    <span className="text-[10px] uppercase tracking-[0.35em] text-violet-300 font-bold">Overview Spotlight</span>
+                    <h3 className="text-2xl lg:text-3xl font-black leading-tight">{overviewActiveMedia.title}</h3>
+                    <p className="max-w-xl text-sm text-slate-200/90">{overviewActiveMedia.description}</p>
+
+                    <div className="flex flex-wrap gap-2">
+                      {spotlightMedia.map((media, idx) => (
+                        <button
+                          key={media.id}
+                          type="button"
+                          onClick={() => { setOverviewMediaIndex(idx); setOverviewPlaying(false); }}
+                          className={`rounded-full border px-3 py-2 text-[11px] font-bold transition ${overviewMediaIndex === idx ? 'bg-white text-slate-950 border-white/40 shadow-sm' : 'bg-white/10 text-slate-200 border-white/15 hover:bg-white/15'}`}
+                        >
+                          {media.type === 'video' ? 'Video Hub' : 'Image Preview'}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 items-center pt-2">
+                      <button
+                        type="button"
+                        onClick={toggleOverviewPlayback}
+                        className="rounded-xl bg-white text-slate-950 px-4 py-2 text-xs font-bold shadow-lg transition hover:bg-slate-100"
+                      >
+                        {overviewActiveIsVideo ? (overviewPlaying ? 'Pause Spotlight' : 'Play Spotlight') : 'View Still'}
+                      </button>
+                      {overviewActiveIsVideo && (
+                        <button
+                          type="button"
+                          onClick={() => setOverviewMuted(prev => !prev)}
+                          className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/15"
+                        >
+                          {overviewMuted ? 'Unmute' : 'Mute'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setOverviewTheater(prev => !prev)}
+                        className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/15"
+                      >
+                        {overviewTheater ? 'Exit Theater' : 'Theater Mode'}
+                      </button>
+                    </div>
+
+                    {overviewActiveIsVideo && (
+                      <div className="w-full max-w-sm">
+                        <label className="text-[10px] uppercase tracking-[0.25em] text-slate-300 font-bold">Volume</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={overviewVolume}
+                          onChange={e => setOverviewVolume(Number(e.target.value))}
+                          className="mt-2 w-full accent-violet-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="relative overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/90 shadow-2xl">
+                    {overviewActiveIsVideo ? (
+                      <video
+                        ref={overviewVideoRef}
+                        src={overviewActiveMedia.src}
+                        poster={overviewActiveMedia.poster}
+                        controls
+                        autoPlay={overviewPlaying}
+                        className="h-full w-full min-h-[260px] object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={overviewActiveMedia.src}
+                        alt={overviewActiveMedia.title}
+                        className="h-full w-full min-h-[260px] object-cover"
+                      />
+                    )}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/80 to-transparent" />
+                  </div>
                 </div>
               </div>
 
@@ -772,9 +943,311 @@ export default function DashboardCustomer() {
             </div>
           )}
 
+          {/* TAB: Wishlist */}
+          {activeTab === 'wishlist' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex justify-between items-center pb-2 border-b">
+                <h3 className="text-lg font-bold font-display text-gray-800">
+                  {t('customer.wishlist_tab')}
+                </h3>
+                {wishlist.length > 0 && (
+                  <div className="flex bg-slate-150/80 p-0.5 rounded-xl border border-gray-250/30 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => { setWishlistLayoutMode('grid'); setPlayingVideoId(null); }}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${wishlistLayoutMode === 'grid' ? 'bg-white text-gray-800 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-800'}`}
+                    >
+                      Grid view
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setWishlistLayoutMode('slides'); setPlayingVideoId(null); setActiveWishlistSlide(0); }}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${wishlistLayoutMode === 'slides' ? 'bg-white text-gray-800 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-800'}`}
+                    >
+                      Slides Mode ⚡
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {wishlist.length === 0 ? (
+                <div className="p-8 text-center bg-gray-50/50 border border-dashed rounded-2xl text-xs text-gray-400 font-mono italic">
+                  Your wishlist is empty. Explore the catalog to save items you love!
+                </div>
+              ) : wishlistLayoutMode === 'grid' ? (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {wishlist.map((item) => (
+                    <div key={item.id} className="p-4 bg-white border border-gray-150 rounded-2xl flex gap-3 shadow-xs items-center">
+                      <img
+                        src={item.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80'}
+                        alt={item.name}
+                        className="h-16 w-16 rounded-xl object-cover border shrink-0 bg-gray-50"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-bold text-sm text-gray-850 truncate">{item.name}</h5>
+                        <p className="text-[9px] text-gray-400 font-mono mt-0.5 uppercase tracking-wider">{item.category} | {item.brand}</p>
+                        <p className="text-xs font-bold text-indigo-750 mt-1">₹{item.price.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div className="flex flex-col gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => addToCart(item)}
+                          className="cursor-pointer bg-violet-600 hover:bg-violet-750 text-white text-[10px] font-bold py-2 px-3.5 rounded-lg flex items-center justify-center gap-1 shadow-sm transition-all active:scale-95"
+                        >
+                          <ShoppingBag className="h-3.5 w-3.5" /> Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeFromWishlist(item.id)}
+                          className="cursor-pointer text-red-500 hover:bg-red-50 rounded-lg p-1.5 text-[10px] font-bold text-center border border-transparent hover:border-red-200 transition-all"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                (() => {
+                  const index = Math.min(Math.max(0, activeWishlistSlide), wishlist.length - 1);
+                  const item = wishlist[index];
+                  const subImages: string[] = item.images?.length ? item.images : [item.imageUrl || ''];
+                  const activeSubImageIndex = wishlistSubImageIndex[item.id] ?? 0;
+                  const safeSubIndex = Math.min(Math.max(0, activeSubImageIndex), subImages.length - 1);
+                  const activeSubImage = subImages[safeSubIndex] || subImages[0];
+                  const hasVideo = !!item.video;
+                  const isPlaying = playingVideoId === item.id;
+
+                  const ambientClasses = item.category === 'fashion'
+                    ? 'from-pink-300/30 to-violet-300/20'
+                    : item.category === 'mobiles-electronics'
+                      ? 'from-cyan-300/30 to-blue-500/20'
+                      : item.category === 'spices'
+                        ? 'from-amber-300/30 to-orange-400/15'
+                        : 'from-slate-300/20 to-slate-700/10';
+
+                  const updateSubImage = (newIndex: number) => {
+                    setWishlistSubImageIndex(prev => ({
+                      ...prev,
+                      [item.id]: Math.min(Math.max(0, newIndex), subImages.length - 1)
+                    }));
+                    setPlayingVideoId(null);
+                  };
+
+                  return (
+                    <div className={`relative overflow-hidden rounded-3xl border border-gray-200/80 p-5 md:p-6 shadow-sm max-w-6xl mx-auto ${overviewTheater ? 'bg-slate-950/95' : 'bg-slate-50'} animate-fadeIn`}>
+                      <div className={`absolute inset-0 pointer-events-none rounded-3xl bg-gradient-to-br ${ambientClasses} blur-3xl opacity-75`} />
+                      <div className="relative grid gap-6 lg:grid-cols-[1.45fr_0.85fr] items-start">
+                        <div className="space-y-5">
+                          <div className="relative overflow-hidden rounded-[28px] border border-slate-800 shadow-xl bg-slate-950">
+                            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-slate-950/90 to-transparent pointer-events-none" />
+                            <div className="aspect-[16/10] w-full bg-slate-900 flex items-center justify-center overflow-hidden">
+                              {isPlaying && item.video ? (
+                                <div className="relative h-full w-full">
+                                  <video
+                                    src={item.video}
+                                    controls
+                                    autoPlay
+                                    className="h-full w-full object-cover"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setPlayingVideoId(null)}
+                                    className="absolute top-4 right-4 rounded-xl bg-black/70 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white transition hover:bg-black"
+                                  >
+                                    Exit Video
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="relative h-full w-full group">
+                                  <img
+                                    src={activeSubImage}
+                                    alt={`${item.name} preview`}
+                                    className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+                                  />
+                                  {hasVideo && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setPlayingVideoId(item.id)}
+                                      className="absolute inset-0 flex items-center justify-center bg-black/25 hover:bg-black/35 transition-all"
+                                      title="Play Product Video"
+                                    >
+                                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-600/90 text-white shadow-lg transition-transform duration-300 hover:scale-110">
+                                        <Play className="h-6 w-6" />
+                                      </div>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                            {subImages.map((thumb, thumbIndex) => (
+                              <button
+                                key={thumbIndex}
+                                type="button"
+                                onClick={() => updateSubImage(thumbIndex)}
+                                className={`overflow-hidden rounded-3xl border transition ${thumbIndex === safeSubIndex ? 'border-violet-600 shadow-lg' : 'border-gray-200 bg-white'}`}
+                              >
+                                <img
+                                  src={thumb}
+                                  alt={`Thumbnail ${thumbIndex + 1}`}
+                                  className="h-20 w-full object-cover"
+                                />
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.24em] text-slate-500">
+                            <button
+                              type="button"
+                              onClick={() => updateSubImage(safeSubIndex - 1)}
+                              disabled={safeSubIndex === 0}
+                              className="rounded-full border border-gray-200 bg-white px-4 py-2 font-bold transition disabled:opacity-40"
+                            >
+                              ← Prev Image
+                            </button>
+                            <span className="font-bold text-slate-700">Image {safeSubIndex + 1} / {subImages.length}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateSubImage(safeSubIndex + 1)}
+                              disabled={safeSubIndex === subImages.length - 1}
+                              className="rounded-full border border-gray-200 bg-white px-4 py-2 font-bold transition disabled:opacity-40"
+                            >
+                              Next Image →
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-5 relative">
+                          <div className="rounded-3xl border border-white/10 bg-white/90 p-5 shadow-sm backdrop-blur-xl">
+                            <div className="flex items-center justify-between gap-4">
+                              <div>
+                                <p className="text-[10px] uppercase tracking-[0.28em] text-violet-600 font-bold">Creative Slide Mode</p>
+                                <h4 className="mt-2 text-xl font-black text-slate-950">{item.name}</h4>
+                              </div>
+                              <span className="rounded-full bg-violet-50 px-3 py-2 text-[10px] font-bold text-violet-700">Featured</span>
+                            </div>
+
+                            <p className="mt-4 text-sm leading-6 text-slate-600">{item.description || 'A polished product reveal with interactive image browsing, video playback, and rich visual presentation.'}</p>
+
+                            <div className="mt-5 space-y-3 text-xs text-slate-500">
+                              <div className="flex items-center justify-between rounded-2xl bg-violet-50/70 p-3">
+                                <span className="font-bold text-slate-700">Brand</span>
+                                <span className="font-bold text-violet-700">{item.brand}</span>
+                              </div>
+                              <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-3 border border-slate-200">
+                                <span className="font-bold text-slate-700">Category</span>
+                                <span className="font-bold text-slate-900">{item.category}</span>
+                              </div>
+                              <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-3 border border-slate-200">
+                                <span className="font-bold text-slate-700">Price</span>
+                                <span className="font-black text-violet-700">₹{item.price.toLocaleString('en-IN')}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <p className="text-[10px] uppercase tracking-[0.28em] text-gray-400 font-bold">Video Controls</p>
+                            <div className="mt-4 space-y-3">
+                              <button
+                                type="button"
+                                onClick={() => setWishlistLayoutMode('slides')}
+                                className="w-full rounded-2xl bg-violet-650 px-4 py-3 text-xs font-bold text-white transition hover:bg-violet-750"
+                              >
+                                Refresh Slide Experience
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setOverviewPlaying(prev => !prev)}
+                                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-xs font-bold text-slate-900 transition hover:bg-slate-50"
+                              >
+                                {overviewPlaying ? 'Pause Overview Hub' : 'Play Overview Hub'}
+                              </button>
+                              <div className="grid grid-cols-3 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setOverviewMuted(prev => !prev)}
+                                  className="rounded-2xl border border-gray-200 bg-white py-3 text-[10px] font-bold text-slate-900 transition hover:bg-slate-50"
+                                >
+                                  {overviewMuted ? 'Unmute' : 'Mute'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setOverviewTheater(prev => !prev)}
+                                  className="rounded-2xl border border-gray-200 bg-white py-3 text-[10px] font-bold text-slate-900 transition hover:bg-slate-50"
+                                >
+                                  {overviewTheater ? 'Compact View' : 'Theater'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setPlayingVideoId(null)}
+                                  className="rounded-2xl border border-gray-200 bg-white py-3 text-[10px] font-bold text-slate-900 transition hover:bg-slate-50"
+                                >
+                                  Stop Product Video
+                                </button>
+                              </div>
+                              {hasVideo && (
+                                <div className="rounded-3xl bg-slate-950/95 p-3 text-xs text-white">
+                                  <p className="font-bold text-white">Media Mode</p>
+                                  <p className="mt-2 text-[11px] leading-5 text-slate-200">Use the play overlay to open the product video. Volume, mute and color-rich theater feel are all available while browsing.</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => {
+                            setActiveWishlistSlide(prev => Math.max(0, prev - 1));
+                            setPlayingVideoId(null);
+                          }}
+                          className="w-full sm:w-auto rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-slate-900 transition disabled:opacity-40"
+                        >
+                          ← Previous Item
+                        </button>
+
+                        <div className="flex items-center justify-center gap-2">
+                          {wishlist.map((_, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                setActiveWishlistSlide(i);
+                                setPlayingVideoId(null);
+                              }}
+                              className={`h-2 rounded-full transition-all ${i === index ? 'w-8 bg-violet-650' : 'w-2 bg-slate-300 hover:bg-slate-400'}`}
+                            />
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={index === wishlist.length - 1}
+                          onClick={() => {
+                            setActiveWishlistSlide(prev => Math.min(wishlist.length - 1, prev + 1));
+                            setPlayingVideoId(null);
+                          }}
+                          className="w-full sm:w-auto rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-slate-900 transition disabled:opacity-40"
+                        >
+                          Next Item →
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          )}
+
           {/* TAB: Reviews ratings ratings */}
-          {activeTab === 'addresses' && (
-            <div className="space-y-4">
+          {activeTab === 'reviews' && (
+            <div className="space-y-4 animate-fadeIn">
               <h3 className="text-lg font-bold font-display text-gray-800">
                 {t('customer.reviews')}
               </h3>

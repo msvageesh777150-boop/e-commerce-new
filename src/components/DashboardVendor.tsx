@@ -23,11 +23,16 @@ import {
   AlertCircle,
   CheckCircle,
   Truck,
-  Zap
+  Zap,
+  Home
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 
-export default function DashboardVendor() {
+interface DashboardVendorProps {
+  onNavigateTo?: (page: string) => void;
+}
+
+export default function DashboardVendor({ onNavigateTo }: DashboardVendorProps) {
   const { token, refreshProfile, vendorRequest, logout, user } = useAuth();
   const { t } = useLanguage();
 
@@ -49,6 +54,8 @@ export default function DashboardVendor() {
   const [latitude, setLatitude] = useState(vendorRequest?.latitude || 12.9716);
   const [longitude, setLongitude] = useState(vendorRequest?.longitude || 77.5946);
   const [additionalDetails, setAdditionalDetails] = useState(vendorRequest?.additionalDetails || '');
+  const [businessCategory, setBusinessCategory] = useState(vendorRequest?.businessCategory || '');
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
 
   // Document file upload simulation state
   const [uploadingDoc, setUploadingDoc] = useState(false);
@@ -72,6 +79,19 @@ export default function DashboardVendor() {
   }, [user]);
 
   useEffect(() => {
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => setCategoriesList(data.categories || []))
+      .catch(e => console.error(e));
+  }, []);
+
+  useEffect(() => {
+    if (vendorRequest?.status === 'approved') {
+      setActiveTab(prev => prev === 'onboarding' ? 'storefront' : prev);
+    }
+  }, [vendorRequest?.status]);
+
+  useEffect(() => {
     if (vendorRequest) {
       setStoreName(vendorRequest.storeName || '');
       setLegalName(vendorRequest.legalName || '');
@@ -85,6 +105,7 @@ export default function DashboardVendor() {
       setPincode(vendorRequest.pincode || '');
       setLatitude(vendorRequest.latitude || 12.9716);
       setLongitude(vendorRequest.longitude || 77.5946);
+      setBusinessCategory(vendorRequest.businessCategory || '');
       if (vendorRequest.documentUrl) {
         setDocFileName("UploadedCertificate.png");
       }
@@ -146,6 +167,8 @@ export default function DashboardVendor() {
   const [prodCategory, setProdCategory] = useState('');
   const [prodBrand, setProdBrand] = useState('');
   const [prodImageUrl, setProdImageUrl] = useState('');
+  const [extraImages, setExtraImages] = useState<string[]>([]);
+  const [prodVideo, setProdVideo] = useState('');
 
   // Orders lists & invoice pdf triggers
   const [orders, setOrders] = useState<any[]>([]);
@@ -229,6 +252,7 @@ export default function DashboardVendor() {
           pincode,
           latitude: parseFloat(latitude as any),
           longitude: parseFloat(longitude as any),
+          businessCategory,
           additionalDetails,
           documentUrl: 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=800&q=80'
         })
@@ -255,15 +279,21 @@ export default function DashboardVendor() {
 
   const saveProductCatalog = async (e: React.FormEvent) => {
     e.preventDefault();
+    const finalImages = Array.from(new Set([prodImageUrl, ...extraImages].filter(Boolean)));
+    if (finalImages.length < 1) {
+      setNotif('Please upload at least one image of this product.');
+      return;
+    }
     setLoading(true);
     const payload = {
       name: prodName,
       price: parseFloat(prodPrice),
       stock: parseInt(prodStock),
       description: prodDesc,
-      category: prodCategory || 'mobiles-electronics',
+      category: prodCategory || (categoriesList[0]?.slug || 'mobiles-electronics'),
       brand: prodBrand || 'AuraTech',
-      images: prodImageUrl ? [prodImageUrl] : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80']
+      images: finalImages,
+      video: prodVideo || ''
     };
 
     try {
@@ -288,6 +318,8 @@ export default function DashboardVendor() {
         setProdCategory('');
         setProdBrand('');
         setProdImageUrl('');
+        setExtraImages([]);
+        setProdVideo('');
         setNotif('Item published successfully to marketplace schemas.');
         fetchCatalog();
       }
@@ -299,6 +331,11 @@ export default function DashboardVendor() {
   };
 
   const triggerDeleteProduct = async (id: string) => {
+    const prod = products.find(p => p.id === id);
+    if (prod && prod.disabledByAdmin) {
+      setNotif('This product has been disabled by the administrator and cannot be deleted.');
+      return;
+    }
     if (!confirm('Confirm deletion of this catalogue listing?')) return;
     try {
       const res = await fetch(`/api/vendor/products/${id}`, {
@@ -315,6 +352,10 @@ export default function DashboardVendor() {
   };
 
   const handleOpenEditProduct = (p: any) => {
+    if (p.disabledByAdmin) {
+      setNotif('This product has been disabled by the administrator and cannot be modified.');
+      return;
+    }
     setEditorProduct(p);
     setProdName(p.name);
     setProdPrice(p.price.toString());
@@ -322,7 +363,9 @@ export default function DashboardVendor() {
     setProdDesc(p.description);
     setProdCategory(p.category);
     setProdBrand(p.brand);
-    setProdImageUrl(p.images[0] || '');
+    setProdImageUrl(p.images?.[0] || '');
+    setExtraImages(p.images || []);
+    setProdVideo(p.video || '');
     setActiveTab('catalog');
   };
 
@@ -476,6 +519,19 @@ export default function DashboardVendor() {
         <div className="lg:w-1/4 flex flex-col gap-2">
           <button
             type="button"
+            onClick={() => {
+              if (onNavigateTo) onNavigateTo('home');
+            }}
+            className="flex items-center w-full px-4 py-3.5 text-xs font-bold rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all gap-2 border border-slate-200 cursor-pointer"
+          >
+            <Home className="h-4 w-4 text-slate-500" />
+            <span>Storefront Portal</span>
+          </button>
+          
+          <div className="h-px bg-gray-200 my-1"></div>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('storefront')}
             className={`cursor-pointer w-full text-left p-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${activeTab === 'storefront' ? 'bg-violet-600 text-white shadow-md' : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200/60'}`}
           >
@@ -599,6 +655,23 @@ export default function DashboardVendor() {
                       </div>
                     </div>
 
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-violet-50/50 p-4 rounded-xl border border-violet-100 gap-3">
+                      <div>
+                        <h5 className="font-bold text-xs text-violet-850">Your Live Shop</h5>
+                        <p className="text-[10px] text-violet-600 mt-0.5 font-sans">View your approved digital marketplace storefront as customers see it.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onNavigateTo) onNavigateTo('shop');
+                        }}
+                        className="cursor-pointer bg-violet-600 hover:bg-violet-750 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-xs shrink-0 active:scale-95 animate-fadeIn"
+                      >
+                        <span>Open Storefront Portal</span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div className="p-4 bg-gray-50 rounded-xl border text-slate-800">
                         <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Products</span>
@@ -709,6 +782,10 @@ export default function DashboardVendor() {
                         <dd className="text-gray-800 font-bold text-sm font-sans">{vendorRequest.legalName}</dd>
                       </div>
                       <div>
+                        <dt className="text-gray-400 font-semibold mb-1">Business Category</dt>
+                        <dd className="text-gray-800 text-sm font-bold capitalize">{vendorRequest.businessCategory?.replace(/-/g, ' ') || 'Uncategorized'}</dd>
+                      </div>
+                      <div>
                         <dt className="text-gray-400 font-semibold mb-1">GST Tax Identifiers</dt>
                         <dd className="text-gray-800 text-sm font-bold">{vendorRequest.gstNumber}</dd>
                       </div>
@@ -759,6 +836,21 @@ export default function DashboardVendor() {
                         onChange={e => setDescription(e.target.value)}
                         className="w-full bg-white p-2.5 text-xs rounded-xl border focus:border-violet-500 outline-none"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-700 uppercase tracking-wider mb-1">Business Category</label>
+                      <select
+                        required
+                        value={businessCategory}
+                        onChange={e => setBusinessCategory(e.target.value)}
+                        className="w-full bg-white px-3 py-2 text-xs rounded-xl border focus:border-violet-500 outline-none"
+                      >
+                        <option value="">Select a Category</option>
+                        {categoriesList.map((c: any) => (
+                          <option key={c.id} value={c.slug}>{c.name}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="grid sm:grid-cols-3 gap-4">
@@ -1022,10 +1114,10 @@ export default function DashboardVendor() {
                         onChange={e => setProdCategory(e.target.value)}
                         className="w-full bg-white px-3 py-2 text-xs rounded-xl border focus:border-violet-500 outline-none"
                       >
-                        <option value="mobiles-electronics">Mobiles & Electronics</option>
-                        <option value="fashion">Apparel & Fashion</option>
-                        <option value="grocery">Grocery & Pantry</option>
-                        <option value="spices">Spices & Indian Herbs</option>
+                        <option value="">Select a Category</option>
+                        {categoriesList.map((c: any) => (
+                          <option key={c.id} value={c.slug}>{c.name}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -1067,7 +1159,7 @@ export default function DashboardVendor() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-gray-700 mb-1">Visual Image URL</label>
+                    <label className="block text-[10px] uppercase font-bold text-gray-700 mb-1">Visual Primary Image</label>
                     {prodImageUrl && (
                       <div className="mb-2">
                         <img src={prodImageUrl} alt="Product Preview" className="h-16 w-16 object-cover rounded border border-gray-300" />
@@ -1081,13 +1173,123 @@ export default function DashboardVendor() {
                         if (file) {
                           const reader = new FileReader();
                           reader.onloadend = () => {
-                            setProdImageUrl(reader.result as string);
+                            const dataUrl = reader.result as string;
+                            setProdImageUrl(dataUrl);
+                            setExtraImages(prev => {
+                              if (!prev.includes(dataUrl)) {
+                                return [dataUrl, ...prev];
+                              }
+                              return prev;
+                            });
                           };
                           reader.readAsDataURL(file);
                         }
                       }}
                       className="w-full bg-white px-3 py-2 text-xs rounded-xl border focus:border-violet-500 outline-none"
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-gray-700 mb-1">More Images (Optional)</label>
+                      {extraImages.length > 0 && (
+                        <div className="flex gap-1.5 mb-2 overflow-x-auto py-1">
+                          {extraImages.map((img, i) => {
+                            const isPrimary = img === prodImageUrl;
+                            return (
+                              <div 
+                                key={i} 
+                                onClick={() => setProdImageUrl(img)}
+                                className={`relative shrink-0 cursor-pointer group/thumb rounded border ${isPrimary ? 'border-violet-650 ring-2 ring-violet-500/20' : 'border-gray-200 hover:border-violet-300'}`}
+                                title={isPrimary ? "Primary Image" : "Click to set as Primary Image"}
+                              >
+                                <img src={img} alt={`Preview ${i}`} className="h-12 w-12 object-cover rounded" />
+                                {isPrimary ? (
+                                  <span className="absolute bottom-0 inset-x-0 bg-violet-600 text-white font-mono text-[7px] text-center font-bold uppercase py-0.5 rounded-b select-none">
+                                    Primary
+                                  </span>
+                                ) : (
+                                  <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white font-mono text-[6px] text-center font-bold uppercase py-0.5 rounded-b opacity-0 group-hover/thumb:opacity-100 transition-opacity select-none">
+                                    Make Primary
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExtraImages(prev => prev.filter((_, idx) => idx !== i));
+                                    if (isPrimary) {
+                                      setProdImageUrl('');
+                                    }
+                                  }}
+                                  className="absolute -top-1 -right-1 bg-red-650 text-white rounded-full text-[8px] h-3.5 w-3.5 flex items-center justify-center cursor-pointer"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []) as File[];
+                          files.forEach(file => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              const dataUrl = reader.result as string;
+                              setExtraImages(prev => {
+                                const next = prev.includes(dataUrl) ? prev : [...prev, dataUrl];
+                                if (!prodImageUrl && next.length > 0) {
+                                  setProdImageUrl(next[0]);
+                                }
+                                return next;
+                              });
+                            };
+                            reader.readAsDataURL(file);
+                          });
+                        }}
+                        className="w-full bg-white px-3 py-2 text-xs rounded-xl border focus:border-violet-500 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-gray-700 mb-1">Product Video Option (Optional)</label>
+                      {prodVideo && (
+                        <div className="mb-2 relative max-w-[120px]">
+                          <video src={prodVideo} controls className="h-12 w-full object-cover rounded border" />
+                          <button
+                            type="button"
+                            onClick={() => setProdVideo('')}
+                            className="absolute -top-1 -right-1 bg-red-650 text-white rounded-full text-[8px] h-3.5 w-3.5 flex items-center justify-center cursor-pointer"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="video/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 8 * 1024 * 1024) {
+                              setNotif("Video size is too large. Please upload a video under 8MB.");
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setProdVideo(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="w-full bg-white px-3 py-2 text-xs rounded-xl border focus:border-violet-500 outline-none"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -1116,21 +1318,54 @@ export default function DashboardVendor() {
                     <p className="text-xs text-gray-500 font-mono italic">No published products mapped inside this tenancy space yet.</p>
                   ) : (
                     <div className="grid sm:grid-cols-2 gap-3.5">
-                      {products.map((p) => (
-                        <div key={p.id} className="p-3 bg-white border border-gray-150 rounded-xl flex gap-3 shadow-xs">
-                          <img src={p.images[0]} alt={p.name} className="h-14 w-14 rounded-lg object-cover bg-gray-50 border shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <h5 className="font-bold text-sm text-gray-800 truncate">{p.name}</h5>
-                            <p className="text-[10px] text-gray-400 font-mono mt-0.5 uppercase tracking-wider">{p.category} | {p.brand}</p>
-                            <p className="text-xs font-bold text-indigo-750 mt-1">₹{p.price.toLocaleString('en-IN')} <span className="text-gray-400 font-normal font-mono text-[10px]">({p.stock} units)</span></p>
-                            
-                            <div className="flex gap-2.5 mt-2 pt-1 border-t border-gray-150/60 text-[10px] font-bold">
-                              <button type="button" onClick={() => handleOpenEditProduct(p)} className="cursor-pointer text-violet-700">Edit</button>
-                              <button type="button" onClick={() => triggerDeleteProduct(p.id)} className="cursor-pointer text-red-650">Remove</button>
+                      {products.map((p) => {
+                        const isDisabled = p.disabledByAdmin;
+                        return (
+                          <div 
+                            key={p.id} 
+                            className={`p-3 border rounded-xl flex gap-3 shadow-xs transition-all ${
+                              isDisabled 
+                                ? 'border-red-200 bg-red-50/5 opacity-65' 
+                                : 'border-gray-150 bg-white'
+                            }`}
+                          >
+                            <img src={p.images[0]} alt={p.name} className="h-14 w-14 rounded-lg object-cover bg-gray-50 border shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start gap-2">
+                                <h5 className={`font-bold text-sm truncate ${isDisabled ? 'text-slate-500 line-through' : 'text-gray-800'}`}>
+                                  {p.name}
+                                </h5>
+                                {isDisabled && (
+                                  <span className="shrink-0 bg-red-50 text-red-700 text-[8px] font-extrabold px-1.5 py-0.5 rounded border border-red-150 font-mono tracking-tight uppercase">
+                                    DISABLED BY ADMIN
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-gray-400 font-mono mt-0.5 uppercase tracking-wider">{p.category} | {p.brand}</p>
+                              <p className="text-xs font-bold text-indigo-750 mt-1">₹{p.price.toLocaleString('en-IN')} <span className="text-gray-400 font-normal font-mono text-[10px]">({p.stock} units)</span></p>
+                              
+                              <div className="flex gap-2.5 mt-2 pt-1 border-t border-gray-150/60 text-[10px] font-bold">
+                                <button 
+                                  type="button" 
+                                  onClick={() => handleOpenEditProduct(p)} 
+                                  disabled={isDisabled}
+                                  className={`cursor-pointer ${isDisabled ? 'text-gray-400 cursor-not-allowed opacity-50' : 'text-violet-700'}`}
+                                >
+                                  Edit
+                                </button>
+                                <button 
+                                  type="button" 
+                                  onClick={() => triggerDeleteProduct(p.id)} 
+                                  disabled={isDisabled}
+                                  className={`cursor-pointer ${isDisabled ? 'text-gray-400 cursor-not-allowed opacity-50' : 'text-red-650'}`}
+                                >
+                                  Remove
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
