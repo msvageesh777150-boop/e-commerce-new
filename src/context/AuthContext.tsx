@@ -5,8 +5,8 @@ interface AuthContextProps {
   user: User | null;
   token: string | null;
   vendorRequest: VendorRequest | null;
-  login: (emailOrPhone: string, code: string, captchaInput: string, expectedCaptcha: string) => Promise<User>;
-  signup: (payload: { name: string; email: string; phone: string; code: string; role: UserRole; storeName?: string; captchaInput: string; expectedCaptcha: string }) => Promise<User>;
+  login: (emailOrPhone: string, code: string) => Promise<User>;
+  signup: (payload: { name: string; email: string; phone: string; code: string; role: UserRole; storeName?: string }) => Promise<User>;
   logout: () => void;
   updateVendorRequest: (request: VendorRequest) => void;
   refreshProfile: () => Promise<void>;
@@ -56,13 +56,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = async (emailOrPhone: string, code: string, captchaInput: string, expectedCaptcha: string): Promise<User> => {
+  const login = async (emailOrPhone: string, code: string): Promise<User> => {
     setError(null);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emailOrPhone, password: code, captcha: captchaInput, expectedCaptcha })
+        body: JSON.stringify({ emailOrPhone, password: code })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (payload: { name: string; email: string; phone: string; code: string; role: UserRole; storeName?: string; captchaInput: string; expectedCaptcha: string }): Promise<User> => {
+  const signup = async (payload: { name: string; email: string; phone: string; code: string; role: UserRole; storeName?: string }): Promise<User> => {
     setError(null);
     try {
       const res = await fetch('/api/auth/signup', {
@@ -92,9 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phone: payload.phone,
           password: payload.code,
           role: payload.role,
-          storeName: payload.storeName,
-          captcha: payload.captchaInput,
-          expectedCaptcha: payload.expectedCaptcha
+          storeName: payload.storeName
         })
       });
       const data = await res.json();

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import VerificationCode from '../components/VerificationCode';
+
 import { Mail, Phone, Lock, User, Store, ShieldAlert, ArrowRight, Loader2, Eye, EyeOff, Truck, Shield } from 'lucide-react';
 
 interface AuthPageProps {
@@ -31,16 +31,12 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [captchaInput, setCaptchaInput] = useState('');
-  const [expectedCaptcha, setExpectedCaptcha] = useState('');
+
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const handleVerifyGenerated = (code: string) => {
-    setExpectedCaptcha(code);
-  };
 
   const resetForm = () => {
     setName('');
@@ -48,7 +44,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
     setPhone('');
     setPassword('');
     setConfirmPassword('');
-    setCaptchaInput('');
+
     setStoreName('');
     setVehiclePlate('');
     setErrorMsg(null);
@@ -66,14 +62,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    if (!captchaInput) {
-      setErrorMsg('Please enter the verification code.');
-      return;
-    }
-    if (captchaInput.toLowerCase() !== expectedCaptcha.toLowerCase()) {
-      setErrorMsg('Verification code does not match. Please try again.');
-      return;
-    }
+
     if (!isLogin) {
       if (!name.trim()) {
         setErrorMsg('Full name is required.');
@@ -112,7 +101,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
           setLoading(false);
           return;
         }
-        const authenticatedUser = await login(credentials, password, captchaInput, expectedCaptcha);
+        const authenticatedUser = await login(credentials, password);
         setSuccessMsg(`Welcome back, ${authenticatedUser.name}! Redirecting...`);
         setTimeout(() => onSuccess(authenticatedUser.role), 600);
       } else {
@@ -123,9 +112,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
           phone: fullPhone,
           code: password,
           role: role as any,
-          storeName: role === 'vendor' ? storeName : undefined,
-          captchaInput,
-          expectedCaptcha
+          storeName: role === 'vendor' ? storeName : undefined
         });
         setSuccessMsg(`Account created! Welcome, ${registeredUser.name}!`);
         setTimeout(() => onSuccess(registeredUser.role), 600);
@@ -387,19 +374,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
               </div>
             )}
 
-            {/* Captcha */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Verification Code *</label>
-              <VerificationCode onVerifyGenerated={handleVerifyGenerated} id="auth-captcha" />
-              <input
-                type="text"
-                required
-                value={captchaInput}
-                onChange={e => setCaptchaInput(e.target.value)}
-                placeholder="Enter the code above"
-                className="w-full bg-gray-50 focus:bg-white rounded-xl px-4 py-2 mt-2 text-sm border border-gray-200 outline-none font-mono focus:border-violet-500"
-              />
-            </div>
+
 
             {/* Submit */}
             <button
