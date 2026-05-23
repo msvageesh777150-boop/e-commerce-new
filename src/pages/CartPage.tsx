@@ -385,26 +385,7 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
               Browse Shop
             </button>
           </div>
-          {wishlist.length > 0 && (
-            <div className="max-w-2xl mx-auto space-y-3">
-              <span className="font-bold text-xs uppercase text-gray-400 tracking-wider">Saved Wishlist ({wishlist.length})</span>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {wishlist.map((w) => (
-                  <div key={w.id} className="p-3 bg-white border border-gray-200/80 rounded-xl flex gap-3 shadow-xs">
-                    <img src={w.imageUrl} alt={w.name} className="h-12 w-12 rounded-lg object-cover border bg-gray-50 shrink-0" />
-                    <div className="flex-1 min-w-0 text-xs">
-                      <h5 className="font-bold text-gray-800 truncate">{w.name}</h5>
-                      <p className="text-[10px] text-gray-400">₹{w.price.toLocaleString('en-IN')}</p>
-                      <div className="flex gap-3 mt-2">
-                        <button type="button" onClick={() => handleAddWishlistToCart(w)} className="cursor-pointer text-violet-700 font-bold text-[10px]">Add to Cart</button>
-                        <button type="button" onClick={() => removeFromWishlist(w.id)} className="cursor-pointer text-red-500 font-bold text-[10px]">Remove</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
         </div>
       ) : (
       <div className="flex flex-col lg:flex-row gap-8">

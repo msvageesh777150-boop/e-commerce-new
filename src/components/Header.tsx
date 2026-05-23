@@ -157,8 +157,8 @@ export default function Header({
 
             {/* Wishlist */}
             <button type="button"
-              onClick={() => onNavigateTo('cart')}
-              className="relative p-2 rounded-xl text-gray-500 hover:text-red-500 hover:bg-gray-100 transition-colors cursor-pointer"
+              onClick={() => onNavigateTo('wishlist')}
+              className={`relative p-2 rounded-xl text-gray-500 hover:text-red-500 hover:bg-gray-100 transition-colors cursor-pointer ${currentPage === 'wishlist' ? 'bg-gray-100 text-red-500' : ''}`}
               title={t('nav.wishlist')}
             >
               <Heart className={`h-4.5 w-4.5 ${wishlist.length > 0 ? 'fill-red-500 text-red-500' : ''}`} />

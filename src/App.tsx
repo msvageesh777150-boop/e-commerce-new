@@ -9,6 +9,7 @@ import CartPage from './pages/CartPage';
 import AuthPage from './pages/AuthPage';
 import ShopPage from './pages/ShopPage';
 import ProductDetailPage from './pages/ProductDetailPage';
+import WishlistPage from './pages/WishlistPage';
 
 import DashboardCustomer from './components/DashboardCustomer';
 import DashboardVendor from './components/DashboardVendor';
@@ -135,6 +136,10 @@ function AppContent() {
 
         {currentPage === 'cart' && (
           <CartPage onNavigateTo={handleNavigateTo} />
+        )}
+
+        {currentPage === 'wishlist' && (
+          <WishlistPage onNavigateTo={handleNavigateTo} />
         )}
 
         {currentPage === 'auth' && (
