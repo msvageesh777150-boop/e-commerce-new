@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Heart, Globe, LogOut, LayoutDashboard, User, Search, Store } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ShoppingCart, Heart, Globe, LogOut, LayoutDashboard, User, Search, Store, Mic, Clock, X, Trash2 } from 'lucide-react';
 import { useLanguage, LANGUAGES, LanguageCode } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -27,12 +27,153 @@ export default function Header({
   const [categoriesDropdownOpen, setCategoriesDropdownOpen] = useState(false);
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
 
+  // Smart Search States
+  const [searchLocal, setSearchLocal] = useState('');
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<{term: string, timestamp: number}[]>([]);
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [isListening, setIsListening] = useState(false);
+
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-cleanup searches older than 30 days
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('recentSearches');
+      if (stored) {
+        let parsed = JSON.parse(stored);
+        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+        const now = Date.now();
+        parsed = parsed.filter((item: any) => now - item.timestamp < thirtyDaysMs);
+        setRecentSearches(parsed);
+        localStorage.setItem('recentSearches', JSON.stringify(parsed));
+      }
+    } catch (e) {
+      console.error('Failed to parse recent searches', e);
+    }
+  }, []);
+
+  // Fetch data for suggestions
   useEffect(() => {
     fetch('/api/categories')
       .then(res => res.json())
       .then(data => setCategoriesList(data.categories || []))
       .catch(err => console.error(err));
+
+    fetch('/api/products')
+      .then(res => res.json())
+      .then(data => setAllProducts(data.products || []))
+      .catch(err => console.error(err));
   }, []);
+
+  // Close search dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  // Voice Search Web Speech API Setup
+  const startVoiceSearch = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Your browser does not support Voice Search.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    let finalTranscript = '';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setSearchDropdownOpen(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setSearchLocal(transcript);
+      if (onSearchChange) onSearchChange(transcript);
+      
+      if (event.results[0].isFinal) {
+        finalTranscript = transcript;
+        recognition.stop();
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      if (finalTranscript.trim()) {
+        handleSearchSubmit(finalTranscript.trim());
+      }
+    };
+
+    recognition.start();
+  };
+
+  const saveRecentSearch = (term: string) => {
+    if (!term.trim()) return;
+    const now = Date.now();
+    setRecentSearches(prev => {
+      const filtered = prev.filter(t => t.term.toLowerCase() !== term.toLowerCase());
+      const updated = [{ term: term.trim(), timestamp: now }, ...filtered].slice(0, 8);
+      localStorage.setItem('recentSearches', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const clearAllRecent = () => {
+    setRecentSearches([]);
+    localStorage.removeItem('recentSearches');
+  };
+
+  const removeRecentSearch = (e: React.MouseEvent, term: string) => {
+    e.stopPropagation();
+    setRecentSearches(prev => {
+      const updated = prev.filter(t => t.term !== term);
+      localStorage.setItem('recentSearches', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleSearchSubmit = (term: string) => {
+    if (!term.trim()) return;
+    saveRecentSearch(term);
+    if (onSearchChange) onSearchChange(term);
+    setSearchLocal(term);
+    setSearchDropdownOpen(false);
+    onNavigateTo('shop');
+  };
+
+  // Generate live suggestions
+  const getSuggestions = () => {
+    const term = searchLocal.toLowerCase().trim();
+    if (!term) return { products: [], categories: [], brands: [] };
+
+    const matchedProducts = allProducts.filter(p => 
+      p.name.toLowerCase().includes(term) || 
+      p.description.toLowerCase().includes(term)
+    ).slice(0, 3);
+
+    const matchedCategories = categoriesList.filter(c => 
+      c.name.toLowerCase().includes(term)
+    ).slice(0, 2);
+
+    const allBrands = Array.from(new Set(allProducts.map(p => p.brand).filter(Boolean)));
+    const matchedBrands = allBrands.filter(b => 
+      b.toLowerCase().includes(term)
+    ).slice(0, 2);
+
+    return { products: matchedProducts, categories: matchedCategories, brands: matchedBrands };
+  };
+
+  const suggestions = getSuggestions();
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -127,15 +268,124 @@ export default function Header({
             </div>
           </nav>
 
-          {/* Search bar */}
-          <div className="flex-1 max-w-md relative hidden sm:block">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder={t('nav.search')}
-              onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-              className="w-full bg-gray-50/80 hover:bg-gray-50 focus:bg-white rounded-xl pl-10 pr-4 py-2 text-sm text-gray-800 placeholder-gray-400 border border-gray-250/70 focus:border-violet-500/80 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all"
-            />
+          {/* Search bar with Smart Dropdown */}
+          <div ref={searchContainerRef} className="flex-1 max-w-lg relative hidden sm:block">
+            <div className={`relative flex items-center w-full bg-gray-50 hover:bg-white focus-within:bg-white border rounded-xl transition-all ${searchDropdownOpen ? 'border-violet-500 ring-1 ring-violet-500/30 shadow-md' : 'border-gray-250/70'}`}>
+              <Search className="absolute left-3.5 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder={isListening ? "Listening..." : t('nav.search')}
+                value={searchLocal}
+                onFocus={() => setSearchDropdownOpen(true)}
+                onChange={(e) => {
+                  setSearchLocal(e.target.value);
+                  setSearchDropdownOpen(true);
+                  if (onSearchChange) onSearchChange(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearchSubmit(searchLocal);
+                  }
+                }}
+                className="w-full bg-transparent pl-10 pr-10 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none"
+              />
+              {isListening ? (
+                <div className="absolute right-3.5 h-4 w-4 bg-red-500 rounded-full animate-pulse" />
+              ) : (
+                <button 
+                  type="button" 
+                  onClick={startVoiceSearch}
+                  className="absolute right-3.5 cursor-pointer text-gray-400 hover:text-violet-600 transition-colors"
+                  title="Voice Search"
+                >
+                  <Mic className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Smart Suggestions Dropdown */}
+            {searchDropdownOpen && (
+              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-200">
+                {!searchLocal.trim() ? (
+                  /* Recent Searches */
+                  <div className="p-2">
+                    <div className="flex justify-between items-center px-3 py-2">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Recent Searches</span>
+                      {recentSearches.length > 0 && (
+                        <button type="button" onClick={clearAllRecent} className="text-[10px] text-gray-400 hover:text-red-500 cursor-pointer font-bold">Clear All</button>
+                      )}
+                    </div>
+                    {recentSearches.length > 0 ? (
+                      recentSearches.map((item, idx) => (
+                        <div key={idx} 
+                          onClick={() => handleSearchSubmit(item.term)}
+                          className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded-xl cursor-pointer group transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3.5 w-3.5 text-gray-400" />
+                            <span className="text-sm font-semibold text-gray-700">{item.term}</span>
+                          </div>
+                          <button type="button" onClick={(e) => removeRecentSearch(e, item.term)} className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 cursor-pointer p-1 transition-all">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-3 py-4 text-center text-xs text-gray-400 italic font-mono">No recent searches</div>
+                    )}
+                  </div>
+                ) : (
+                  /* Live Suggestions */
+                  <div className="p-2 space-y-1">
+                    {suggestions.categories.length > 0 && (
+                      <div className="mb-2">
+                        <span className="block px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Categories</span>
+                        {suggestions.categories.map((c: any) => (
+                          <div key={c.id} onClick={() => {
+                            if (onSelectCategory) onSelectCategory(c.slug);
+                            handleSearchSubmit(c.name);
+                          }} className="flex items-center gap-2 px-3 py-2 hover:bg-violet-50 rounded-xl cursor-pointer text-sm font-semibold text-gray-700 transition-colors">
+                            <Search className="h-3 w-3 text-violet-400" />
+                            {c.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {suggestions.brands.length > 0 && (
+                      <div className="mb-2">
+                        <span className="block px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Brands</span>
+                        {suggestions.brands.map((b: any, idx: number) => (
+                          <div key={idx} onClick={() => handleSearchSubmit(b)} className="flex items-center gap-2 px-3 py-2 hover:bg-violet-50 rounded-xl cursor-pointer text-sm font-semibold text-gray-700 transition-colors">
+                            <Search className="h-3 w-3 text-violet-400" />
+                            {b}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {suggestions.products.length > 0 ? (
+                      <div>
+                        <span className="block px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Products</span>
+                        {suggestions.products.map((p: any) => (
+                          <div key={p.id} onClick={() => handleSearchSubmit(p.name)} className="flex items-center gap-3 px-3 py-2 hover:bg-violet-50 rounded-xl cursor-pointer transition-colors">
+                            <img src={p.images?.[0]} alt="" className="h-8 w-8 rounded object-cover border bg-white" />
+                            <div>
+                              <div className="text-sm font-semibold text-gray-800 leading-tight">{p.name}</div>
+                              <div className="text-[10px] text-gray-400 font-mono mt-0.5">{p.brand} in {p.category}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-4 text-center text-xs text-gray-400 italic font-mono">
+                        Press Enter to search for "{searchLocal}"
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Actions panel */}

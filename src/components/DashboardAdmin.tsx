@@ -68,6 +68,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
   const [newCouponTitle, setNewCouponTitle] = useState('');
   const [newCouponCategory, setNewCouponCategory] = useState('');
   const [newCouponDiscount, setNewCouponDiscount] = useState('');
+  const [editingCouponId, setEditingCouponId] = useState<string | null>(null);
 
   // Audits data
   const [vendorRequests, setVendorRequests] = useState<any[]>([]);
@@ -171,8 +172,12 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
     e.preventDefault();
     if (!newCouponTitle || !newCouponCategory || !newCouponDiscount) return;
     try {
-      const res = await fetch('/api/admin/coupons', {
-        method: 'POST',
+      const isEditing = !!editingCouponId;
+      const url = isEditing ? `/api/admin/coupons/${editingCouponId}` : '/api/admin/coupons';
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -181,14 +186,15 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
           title: newCouponTitle,
           categorySlug: newCouponCategory,
           discountAmount: newCouponDiscount,
-          isActive: true
+          ...(isEditing ? {} : { isActive: true })
         })
       });
       if (res.ok) {
-        addToast('Coupon Created', 'The discount coupon is now active.', 'success');
+        addToast(isEditing ? 'Coupon Updated' : 'Coupon Created', isEditing ? 'The coupon has been updated successfully.' : 'The discount coupon is now active.', 'success');
         setNewCouponTitle('');
         setNewCouponCategory('');
         setNewCouponDiscount('');
+        setEditingCouponId(null);
         fetchCoupons();
       } else {
         addToast('Error', 'Failed to save to server. Did you restart the backend?', 'error');
@@ -196,6 +202,40 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
     } catch (e) {
       console.error(e);
       addToast('Error', 'Failed to create coupon. Network error.', 'error');
+    }
+  };
+
+  const handleEditCoupon = (coupon: any) => {
+    setNewCouponTitle(coupon.title);
+    setNewCouponCategory(coupon.categorySlug);
+    setNewCouponDiscount(coupon.discountAmount.toString());
+    setEditingCouponId(coupon.id);
+  };
+
+  const handleDeleteCoupon = async (couponId: string) => {
+    if (!confirm('Are you sure you want to delete this coupon?')) return;
+    try {
+      const res = await fetch(`/api/admin/coupons/${couponId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        addToast('Coupon Deleted', 'The coupon has been removed.', 'success');
+        if (editingCouponId === couponId) {
+          setNewCouponTitle('');
+          setNewCouponCategory('');
+          setNewCouponDiscount('');
+          setEditingCouponId(null);
+        }
+        fetchCoupons();
+      } else {
+        addToast('Error', 'Failed to delete coupon.', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      addToast('Error', 'Failed to delete coupon. Network error.', 'error');
     }
   };
 
@@ -2776,7 +2816,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Create Form */}
                 <div className="lg:col-span-1 bg-white border border-gray-200/60 rounded-2xl p-6 shadow-sm h-fit">
-                  <h4 className="text-sm font-bold text-slate-800 border-b border-gray-100 pb-3 mb-4">Create New Coupon</h4>
+                  <h4 className="text-sm font-bold text-slate-800 border-b border-gray-100 pb-3 mb-4">{editingCouponId ? 'Edit Coupon' : 'Create New Coupon'}</h4>
                   <form onSubmit={handleCreateCoupon} className="space-y-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1.5">Coupon Title / Description</label>
@@ -2795,10 +2835,22 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                       <label className="block text-xs font-semibold text-slate-600 mb-1.5">Flat Discount Amount (₹)</label>
                       <input type="number" value={newCouponDiscount} onChange={e => setNewCouponDiscount(e.target.value)} required min="1" placeholder="e.g. 50" className="w-full text-sm px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" />
                     </div>
-                    <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-all shadow-md mt-6 flex items-center justify-center gap-2">
-                      <Ticket className="h-4 w-4" />
-                      Publish Coupon
-                    </button>
+                    <div className="flex gap-2">
+                      <button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-all shadow-md mt-6 flex items-center justify-center gap-2">
+                        <Ticket className="h-4 w-4" />
+                        {editingCouponId ? 'Update Coupon' : 'Publish Coupon'}
+                      </button>
+                      {editingCouponId && (
+                        <button type="button" onClick={() => {
+                          setEditingCouponId(null);
+                          setNewCouponTitle('');
+                          setNewCouponCategory('');
+                          setNewCouponDiscount('');
+                        }} className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-sm transition-all shadow-md mt-6 flex items-center justify-center gap-2">
+                          Cancel
+                        </button>
+                      )}
+                    </div>
                   </form>
                 </div>
 
@@ -2835,9 +2887,17 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                               </p>
                             </div>
                           </div>
-                          <button type="button" onClick={() => handleToggleCoupon(c)} className={`mt-3 sm:mt-0 px-4 py-2 text-[11px] font-bold rounded-lg border transition-all ${c.isActive ? 'bg-white text-red-600 border-red-200 hover:bg-red-50 shadow-sm' : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50 shadow-sm'}`}>
-                            {c.isActive ? 'Disable Coupon' : 'Enable Coupon'}
-                          </button>
+                          <div className="flex flex-wrap items-center gap-2 mt-3 sm:mt-0">
+                            <button type="button" onClick={() => handleEditCoupon(c)} className="px-3 py-2 text-[11px] font-bold rounded-lg border bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 shadow-sm transition-all">
+                              Edit
+                            </button>
+                            <button type="button" onClick={() => handleDeleteCoupon(c.id)} className="px-3 py-2 text-[11px] font-bold rounded-lg border bg-white text-rose-600 border-rose-200 hover:bg-rose-50 shadow-sm transition-all">
+                              Delete
+                            </button>
+                            <button type="button" onClick={() => handleToggleCoupon(c)} className={`px-4 py-2 text-[11px] font-bold rounded-lg border transition-all ${c.isActive ? 'bg-white text-red-600 border-red-200 hover:bg-red-50 shadow-sm' : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50 shadow-sm'}`}>
+                              {c.isActive ? 'Disable Coupon' : 'Enable Coupon'}
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>

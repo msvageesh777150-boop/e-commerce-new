@@ -426,45 +426,6 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
                 View Cart ({cartCount} items)
               </button>
             )}
-
-            {/* WhatsApp Vendor Chat */}
-            <a
-              href={`https://wa.me/919876543210?text=Hello,%20I%20am%20interested%20in:%20${encodeURIComponent(product.name)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cursor-pointer w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 text-sm transition-all active:scale-95"
-            >
-              <MessageSquare className="h-4 w-4" />
-              Chat with Vendor on WhatsApp
-            </a>
-          </div>
-
-          {/* Product Options / Action media toggle block */}
-          <div className="space-y-3.5 border-t pt-4 border-gray-100">
-            <span className="block text-[10px] uppercase font-bold text-gray-500 tracking-wider">Product Options / Action</span>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => product.images?.[0] && setActiveImage(product.images[0])}
-                className={`cursor-pointer px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
-                  !isVideo(activeImage) ? 'bg-violet-50 border-violet-300 text-violet-700 shadow-sm' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                View Images Option
-              </button>
-              {product.video && (
-                <button
-                  type="button"
-                  onClick={() => setActiveImage(product.video)}
-                  className={`cursor-pointer px-4 py-2 text-xs font-bold rounded-xl border flex items-center gap-1.5 transition-all ${
-                    isVideo(activeImage) ? 'bg-violet-50 border-violet-300 text-violet-700 shadow-sm' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-                  Play Video Option
-                </button>
-              )}
-            </div>
           </div>
 
           {/* Benefits */}

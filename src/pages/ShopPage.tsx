@@ -94,11 +94,13 @@ export default function ShopPage({
   const brands = ['all', ...Array.from(new Set(products.map(p => p.brand).filter(Boolean)))];
 
   const filteredProducts = products.filter(p => {
+    const query = localSearch || searchQuery;
+    const term = query.toLowerCase().trim();
     const matchesSearch =
-      p.name.toLowerCase().includes(localSearch.toLowerCase()) ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(localSearch.toLowerCase()) ||
-      p.brand.toLowerCase().includes(localSearch.toLowerCase());
+      p.name.toLowerCase().includes(term) ||
+      p.description.toLowerCase().includes(term) ||
+      p.brand.toLowerCase().includes(term) ||
+      p.category.toLowerCase().includes(term);
     const matchesCategory = categoryFilter === 'all' || p.category.toLowerCase() === categoryFilter.toLowerCase();
     const matchesBrand = brandFilter === 'all' || p.brand.toLowerCase() === brandFilter.toLowerCase();
     const matchesPrice = p.price <= priceMax;
@@ -107,8 +109,8 @@ export default function ShopPage({
   });
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === 'price-low') return a.price - b.price;
-    if (sortBy === 'price-high') return b.price - a.price;
+    if (sortBy === 'price-low') return Number(a.price || 0) - Number(b.price || 0);
+    if (sortBy === 'price-high') return Number(b.price || 0) - Number(a.price || 0);
     if (sortBy === 'rating') {
       const rA = getProductRatingDetails(a.id).avg;
       const rB = getProductRatingDetails(b.id).avg;
