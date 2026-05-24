@@ -125,6 +125,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       quantity: item.quantity,
       name: prod?.name || 'Loading Product...',
       price: prod?.price || 0,
+      category: prod?.category || '',
       imageUrl: prod?.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80',
       brand: prod?.brand || 'Premium Tenant'
     };

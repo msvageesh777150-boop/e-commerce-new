@@ -41,6 +41,7 @@ export interface VendorRequest {
   status: VendorApprovalStatus;
   documentUrl: string; // Base64 simulated URI
   remarks: string;
+  additionalDetails?: string;
   history: StatusHistoryEntry[];
   updatedAt: string;
 }

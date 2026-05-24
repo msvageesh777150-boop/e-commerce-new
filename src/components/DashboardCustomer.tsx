@@ -3,9 +3,13 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 import MapPicker from './MapPicker';
-import { ShoppingBag, Star, MapPin, Bell, CheckCircle, ShieldAlert, FileText, IndianRupee, MessageSquare, Heart, User, Settings, Loader2, Play, Trash2 } from 'lucide-react';
+import { ShoppingBag, Star, MapPin, Bell, CheckCircle, ShieldAlert, FileText, IndianRupee, MessageSquare, Heart, User, Settings, Loader2, Play, Trash2, Share2 } from 'lucide-react';
 
-export default function DashboardCustomer() {
+interface DashboardCustomerProps {
+  onNavigateTo?: (page: string) => void;
+}
+
+export default function DashboardCustomer({ onNavigateTo }: DashboardCustomerProps) {
   const { token, user, refreshProfile } = useAuth();
   const { wishlist, removeFromWishlist, addToCart } = useCart();
   const { t } = useLanguage();
@@ -53,6 +57,7 @@ export default function DashboardCustomer() {
   const [profileError, setProfileError] = useState<string | null>(null);
 
   const [notif, setNotif] = useState<string | null>(null);
+  const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -67,7 +72,20 @@ export default function DashboardCustomer() {
     fetchAddresses();
     fetchReviews();
     fetchAlerts();
+    fetchProducts();
   }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch('/api/products');
+      if (res.ok) {
+        const data = await res.json();
+        setRecommendedProducts(data.products || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -286,32 +304,42 @@ export default function DashboardCustomer() {
     }));
   }, [activeWishlistSlide, wishlist]);
 
-  const spotlightMedia = [
-    {
-      id: 'spotlight-video',
-      title: 'Spotlight Video Hub',
-      description: 'Discover cinema-style product stories, curated launches, and immersive motion experiences in your overview panel.',
-      type: 'video' as const,
-      src: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-      poster: 'https://images.unsplash.com/photo-1512446733611-9099a758e723?w=1200&q=80'
-    },
-    {
-      id: 'spotlight-image-1',
-      title: 'Creative Launch Gallery',
-      description: 'A polished hero image slot where side-by-side visuals and interactive media controls feel premium.',
-      type: 'image' as const,
-      src: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1200&q=80'
-    },
-    {
-      id: 'spotlight-image-2',
-      title: 'Ambient Product Showcase',
-      description: 'Toggle between curated photography and motion-driven highlight reels with elegant controls.',
-      type: 'image' as const,
-      src: 'https://images.unsplash.com/photo-1503602642458-232111445657?w=1200&q=80'
-    }
-  ];
+  const spotlightMedia = recommendedProducts.length > 0 
+    ? recommendedProducts.slice(0, 5).map((prod) => ({
+        id: prod.id,
+        title: prod.name,
+        description: prod.description ? (prod.description.substring(0, 100) + '...') : 'Discover premium items and curated launches directly inside your interactive dashboard.',
+        type: (prod.video ? 'video' : 'image') as 'video' | 'image',
+        src: prod.video || prod.images?.[0] || prod.imageUrl || 'https://images.unsplash.com/photo-1503602642458-232111445657?w=1200&q=80',
+        poster: prod.images?.[0] || prod.imageUrl || 'https://images.unsplash.com/photo-1512446733611-9099a758e723?w=1200&q=80'
+      }))
+    : [
+        {
+          id: 'spotlight-video',
+          title: 'Spotlight Video Hub',
+          description: 'Discover cinema-style product stories, curated launches, and immersive motion experiences in your overview panel.',
+          type: 'video' as const,
+          src: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+          poster: 'https://images.unsplash.com/photo-1512446733611-9099a758e723?w=1200&q=80'
+        },
+        {
+          id: 'spotlight-image-1',
+          title: 'Creative Launch Gallery',
+          description: 'A polished hero image slot where side-by-side visuals and interactive media controls feel premium.',
+          type: 'image' as const,
+          src: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1200&q=80'
+        },
+        {
+          id: 'spotlight-image-2',
+          title: 'Ambient Product Showcase',
+          description: 'Toggle between curated photography and motion-driven highlight reels with elegant controls.',
+          type: 'image' as const,
+          src: 'https://images.unsplash.com/photo-1503602642458-232111445657?w=1200&q=80'
+        }
+      ];
 
-  const overviewActiveMedia = spotlightMedia[overviewMediaIndex];
+  const safeMediaIndex = Math.min(Math.max(0, overviewMediaIndex), spotlightMedia.length - 1);
+  const overviewActiveMedia = spotlightMedia[safeMediaIndex] || spotlightMedia[0];
   const overviewActiveIsVideo = overviewActiveMedia.type === 'video';
 
   const toggleOverviewPlayback = () => {
@@ -1127,7 +1155,20 @@ export default function DashboardCustomer() {
                                 <p className="text-[10px] uppercase tracking-[0.28em] text-violet-600 font-bold">Creative Slide Mode</p>
                                 <h4 className="mt-2 text-xl font-black text-slate-950">{item.name}</h4>
                               </div>
-                              <span className="rounded-full bg-violet-50 px-3 py-2 text-[10px] font-bold text-violet-700">Featured</span>
+                              <div className="flex gap-2 items-center">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(`${window.location.origin}/product/${item.id}`);
+                                    setNotif('Shareable link copied to clipboard!');
+                                  }}
+                                  className="rounded-full bg-violet-50 p-1.5 text-violet-700 hover:bg-violet-100 transition-colors cursor-pointer"
+                                  title="Copy Shareable Link"
+                                >
+                                  <Share2 className="h-3.5 w-3.5" />
+                                </button>
+                                <span className="rounded-full bg-violet-50 px-3 py-2 text-[10px] font-bold text-violet-700">Featured</span>
+                              </div>
                             </div>
 
                             <p className="mt-4 text-sm leading-6 text-slate-600">{item.description || 'A polished product reveal with interactive image browsing, video playback, and rich visual presentation.'}</p>

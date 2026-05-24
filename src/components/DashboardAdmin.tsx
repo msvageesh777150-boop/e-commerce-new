@@ -32,7 +32,8 @@ import {
   UserPlus,
   Loader2,
   Store,
-  Search
+  Search,
+  Ticket
 } from 'lucide-react';
 
 interface DashboardAdminProps {
@@ -43,7 +44,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
   const { token, logout, user } = useAuth();
   const { t } = useLanguage();
 
-  const [activeTab, setActiveTab] = useState<'console' | 'approvals' | 'categories' | 'admins' | 'diagnostics' | 'logistics' | 'vendors'>('console');
+  const [activeTab, setActiveTab] = useState<'console' | 'approvals' | 'categories' | 'admins' | 'diagnostics' | 'logistics' | 'vendors' | 'coupons'>('console');
   
   // Mobile sidebar visibility
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -60,6 +61,13 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
   const [vendorStats, setVendorStats] = useState<any | null>(null);
   const [selectedVendorCategory, setSelectedVendorCategory] = useState<string>('all');
   const [vendorSearchQuery, setVendorSearchQuery] = useState('');
+
+  // Coupons states
+  const [couponsList, setCouponsList] = useState<any[]>([]);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
+  const [newCouponTitle, setNewCouponTitle] = useState('');
+  const [newCouponCategory, setNewCouponCategory] = useState('');
+  const [newCouponDiscount, setNewCouponDiscount] = useState('');
 
   // Audits data
   const [vendorRequests, setVendorRequests] = useState<any[]>([]);
@@ -141,6 +149,78 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
     }
   };
 
+  const fetchCoupons = async () => {
+    setLoadingCoupons(true);
+    try {
+      const res = await fetch('/api/admin/coupons', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCouponsList(data.coupons || []);
+      }
+    } catch (e) {
+      console.error(e);
+      addToast('Coupons Fetch Error', 'Could not retrieve registered coupons.', 'error');
+    } finally {
+      setLoadingCoupons(false);
+    }
+  };
+
+  const handleCreateCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCouponTitle || !newCouponCategory || !newCouponDiscount) return;
+    try {
+      const res = await fetch('/api/admin/coupons', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: newCouponTitle,
+          categorySlug: newCouponCategory,
+          discountAmount: newCouponDiscount,
+          isActive: true
+        })
+      });
+      if (res.ok) {
+        addToast('Coupon Created', 'The discount coupon is now active.', 'success');
+        setNewCouponTitle('');
+        setNewCouponCategory('');
+        setNewCouponDiscount('');
+        fetchCoupons();
+      } else {
+        addToast('Error', 'Failed to save to server. Did you restart the backend?', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      addToast('Error', 'Failed to create coupon. Network error.', 'error');
+    }
+  };
+
+  const handleToggleCoupon = async (coupon: any) => {
+    try {
+      const res = await fetch(`/api/admin/coupons/${coupon.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          isActive: !coupon.isActive
+        })
+      });
+      if (res.ok) {
+        addToast('Coupon Updated', 'Coupon status changed.', 'success');
+        fetchCoupons();
+      }
+    } catch (e) {
+      console.error(e);
+      addToast('Error', 'Failed to update coupon', 'error');
+    }
+  };
+
   const fetchVendorDetails = async (vendorId: string) => {
     try {
       const res = await fetch(`/api/admin/vendors/${vendorId}`, {
@@ -193,6 +273,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
     fetchLogisticsData();
     fetchAnalyticsData();
     fetchVendors();
+    fetchCoupons();
   }, []);
 
   const fetchAnalyticsData = async () => {
@@ -821,6 +902,23 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             <span>Categories & Brands</span>
           </button>
 
+          {/* Coupons Engine Module option */}
+          <button type="button"
+            onClick={() => {
+              setActiveTab('coupons');
+              setMobileSidebarOpen(false);
+              fetchCoupons();
+            }}
+            className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all gap-3 ${
+              activeTab === 'coupons' 
+                ? 'bg-indigo-600 text-white shadow-md font-bold' 
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Ticket className="h-4 w-4" />
+            <span>Coupons</span>
+          </button>
+
           {/* Vendors Module option */}
           <button type="button"
             onClick={() => {
@@ -926,6 +1024,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
               {activeTab === 'console' && 'Platform Control Center'}
               {activeTab === 'approvals' && 'Vendor Shop Onboarding'}
               {activeTab === 'categories' && 'Category & Brand Console'}
+              {activeTab === 'coupons' && 'Coupons'}
               {activeTab === 'admins' && 'Administrative Deployment'}
               {activeTab === 'diagnostics' && 'System Diagnostics & Snapshots'}
               {activeTab === 'logistics' && 'Logistics Fleet & QR Tracking'}
@@ -2651,6 +2750,100 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB: COUPONS */}
+          {activeTab === 'coupons' && (
+            <div className="space-y-8 animate-fade-in">
+              <div className="bg-slate-900 border border-slate-850 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="space-y-1 z-10">
+                  <span className="text-[9px] uppercase font-mono tracking-widest font-extrabold text-indigo-400 bg-indigo-500/15 py-0.5 px-2 rounded-md border border-indigo-500/10 inline-block mb-1">
+                    Coupons
+                  </span>
+                  <h3 className="text-xl font-bold font-display tracking-tight text-white leading-tight">
+                    Dynamic Coupon Management
+                  </h3>
+                  <p className="text-slate-400 text-xs font-sans leading-relaxed max-w-xl">
+                    Create category-specific coupons that automatically appear to customers with matching products during checkout. No coupon codes necessary.
+                  </p>
+                </div>
+                <div className="h-16 w-16 bg-white/5 rounded-full flex items-center justify-center shrink-0">
+                  <Ticket className="h-8 w-8 text-indigo-400 opacity-80" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Create Form */}
+                <div className="lg:col-span-1 bg-white border border-gray-200/60 rounded-2xl p-6 shadow-sm h-fit">
+                  <h4 className="text-sm font-bold text-slate-800 border-b border-gray-100 pb-3 mb-4">Create New Coupon</h4>
+                  <form onSubmit={handleCreateCoupon} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Coupon Title / Description</label>
+                      <input type="text" value={newCouponTitle} onChange={e => setNewCouponTitle(e.target.value)} required placeholder="e.g. 🎉 Electronics Offer" className="w-full text-sm px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Target Category Match</label>
+                      <select value={newCouponCategory} onChange={e => setNewCouponCategory(e.target.value)} required className="w-full text-sm px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all cursor-pointer">
+                        <option value="">-- Select Category --</option>
+                        {categories.map(c => (
+                          <option key={c.id} value={c.slug}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Flat Discount Amount (₹)</label>
+                      <input type="number" value={newCouponDiscount} onChange={e => setNewCouponDiscount(e.target.value)} required min="1" placeholder="e.g. 50" className="w-full text-sm px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" />
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-all shadow-md mt-6 flex items-center justify-center gap-2">
+                      <Ticket className="h-4 w-4" />
+                      Publish Coupon
+                    </button>
+                  </form>
+                </div>
+
+                {/* Coupons List */}
+                <div className="lg:col-span-2 bg-white border border-gray-200/60 rounded-2xl p-6 shadow-sm">
+                  <h4 className="text-sm font-bold text-slate-800 border-b border-gray-100 pb-3 mb-4 flex items-center justify-between">
+                    <span>Active & Past Coupons</span>
+                    {loadingCoupons && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+                  </h4>
+                  
+                  {couponsList.length === 0 ? (
+                    <div className="text-center py-16 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                      <Ticket className="h-10 w-10 mx-auto text-slate-300 mb-3" />
+                      <p className="text-sm font-bold text-slate-600">No coupons active</p>
+                      <p className="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">Create a coupon from the side panel to offer dynamic discounts to customers.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                      {couponsList.map((c: any) => (
+                        <div key={c.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border transition-all ${c.isActive ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-50/80 border-slate-200 opacity-70'}`}>
+                          <div className="flex items-center gap-4">
+                            <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center ${c.isActive ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
+                              <Ticket className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <h5 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+                                {c.title}
+                                {c.isActive && <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[9px] border border-emerald-200 font-bold uppercase tracking-wide">Active</span>}
+                              </h5>
+                              <p className="text-[11px] text-slate-500 mt-1 flex flex-wrap items-center gap-1.5">
+                                <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-medium">Slug: {c.categorySlug}</span>
+                                <span>•</span>
+                                <span className="font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">₹{c.discountAmount} OFF</span>
+                              </p>
+                            </div>
+                          </div>
+                          <button type="button" onClick={() => handleToggleCoupon(c)} className={`mt-3 sm:mt-0 px-4 py-2 text-[11px] font-bold rounded-lg border transition-all ${c.isActive ? 'bg-white text-red-600 border-red-200 hover:bg-red-50 shadow-sm' : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50 shadow-sm'}`}>
+                            {c.isActive ? 'Disable Coupon' : 'Enable Coupon'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

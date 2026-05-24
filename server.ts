@@ -148,7 +148,8 @@ let db: any = {
   shipments: [],
   shipment_logs: [],
   schemas: {}, // Holds dynamic multi-tenant sub-databases representing "vendor_[store_name]"
-  vehicle_types: []
+  vehicle_types: [],
+  coupons: []
 };
 
 // Seed administrative and user roles in the database securely on startup
@@ -521,6 +522,72 @@ loadDB();
 // ==========================================
 // API REST ENDPOINTS
 // ==========================================
+
+// ==========================================
+// COUPON ENDPOINTS
+// ==========================================
+
+app.get('/api/coupons', (req, res) => {
+  const activeCoupons = db.coupons.filter((c: any) => c.isActive);
+  res.json({ coupons: activeCoupons });
+});
+
+app.get('/api/admin/coupons', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+  if (!caller || caller.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin role context required.' });
+  }
+  res.json({ coupons: db.coupons });
+});
+
+app.post('/api/admin/coupons', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+  if (!caller || caller.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin role context required.' });
+  }
+
+  const { title, categorySlug, discountAmount, isActive } = req.body;
+  const newCoupon = {
+    id: 'coup-' + crypto.randomUUID().substring(0, 8),
+    title,
+    categorySlug,
+    discountAmount: Number(discountAmount),
+    isActive: !!isActive,
+    createdAt: new Date().toISOString()
+  };
+  db.coupons.push(newCoupon);
+  saveDB();
+  res.json({ success: true, coupon: newCoupon });
+});
+
+app.put('/api/admin/coupons/:id', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+  if (!caller || caller.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin role context required.' });
+  }
+
+  const { id } = req.params;
+  const { title, categorySlug, discountAmount, isActive } = req.body;
+  const idx = db.coupons.findIndex((c: any) => c.id === id);
+  
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Coupon not found' });
+  }
+
+  db.coupons[idx] = {
+    ...db.coupons[idx],
+    ...(title !== undefined && { title }),
+    ...(categorySlug !== undefined && { categorySlug }),
+    ...(discountAmount !== undefined && { discountAmount: Number(discountAmount) }),
+    ...(isActive !== undefined && { isActive: !!isActive }),
+    updatedAt: new Date().toISOString()
+  };
+  saveDB();
+  res.json({ success: true, coupon: db.coupons[idx] });
+});
 
 // Get current user profile endpoint (Fixes forced logout bug on form submit)
 app.get('/api/auth/me', (req, res) => {

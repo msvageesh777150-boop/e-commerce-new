@@ -6,7 +6,7 @@ import MapPicker from '../components/MapPicker';
 import { 
   ShoppingBag, Trash2, ShieldCheck, CreditCard, ArrowRight, Loader2, MapPin,
   CheckCircle, Smartphone, Banknote, Package, X, Plus, Minus, ChevronRight,
-  User, Phone, Home, Building
+  User, Phone, Home, Building, Ticket, Tag
 } from 'lucide-react';
 
 interface CartPageProps {
@@ -29,7 +29,7 @@ interface Address {
   longitude: number;
 }
 
-type CheckoutStep = 'address' | 'invoice' | 'payment' | 'receipt';
+type CheckoutStep = 'address' | 'coupon' | 'invoice' | 'payment' | 'receipt';
 type PaymentMethod = 'debit' | 'credit' | 'upi' | 'cod';
 
 export default function CartPage({ onNavigateTo }: CartPageProps) {
@@ -68,9 +68,18 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
   const [loading, setLoading] = useState(false);
   const [successOrder, setSuccessOrder] = useState<any | null>(null);
 
+  // Coupon
+  const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<any | null>(null);
+
   const cartSubtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shippingFee = 0;
-  const grandTotal = cartSubtotal;
+  
+  const hasMatchingCategory = appliedCoupon ? cart.some(item => item.category === appliedCoupon.categorySlug) : false;
+  const finalDiscount = hasMatchingCategory ? appliedCoupon.discountAmount : 0;
+  
+  const grandTotal = Math.max(0, cartSubtotal - finalDiscount);
 
   const fallbackAddress: Address = {
     label: 'Home',
@@ -113,6 +122,26 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
       setAddrPhone(user.phone || '');
     }
   }, [token]);
+
+  useEffect(() => {
+    if (step === 'coupon') {
+      const loadCoupons = async () => {
+        setLoadingCoupons(true);
+        try {
+          const res = await fetch('/api/coupons');
+          if (res.ok) {
+            const data = await res.json();
+            setAvailableCoupons(data.coupons || []);
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoadingCoupons(false);
+        }
+      };
+      loadCoupons();
+    }
+  }, [step]);
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,8 +285,9 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
   // Step indicator
   const steps = [
     { key: 'address', label: 'Address', num: 1 },
-    { key: 'invoice', label: 'Invoice', num: 2 },
-    { key: 'payment', label: 'Payment', num: 3 },
+    { key: 'coupon', label: 'Offers', num: 2 },
+    { key: 'invoice', label: 'Invoice', num: 3 },
+    { key: 'payment', label: 'Payment', num: 4 },
   ];
 
   const stepIndex = steps.findIndex(s => s.key === step);
@@ -353,14 +383,14 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
           <div className="flex gap-3 pt-2">
             <button
               type="button"
-              onClick={() => { setSuccessOrder(null); setStep('cart'); onNavigateTo('home'); }}
+              onClick={() => { setSuccessOrder(null); setStep('address'); onNavigateTo('home'); }}
               className="cursor-pointer flex-1 bg-gray-100 font-bold border hover:bg-gray-150 rounded-xl py-3 text-gray-700 text-xs transition-all"
             >
               Continue Shopping
             </button>
             <button
               type="button"
-              onClick={() => { setSuccessOrder(null); setStep('cart'); onNavigateTo('dashboard'); }}
+              onClick={() => { setSuccessOrder(null); setStep('address'); onNavigateTo('dashboard'); }}
               className="cursor-pointer flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl py-3 text-xs transition-all shadow-md"
             >
               Track in Dashboard
@@ -538,14 +568,93 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setStep('invoice')}
+                      onClick={() => setStep('coupon')}
                       className="cursor-pointer flex-1 bg-violet-600 hover:bg-violet-700 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-xs shadow-md"
                     >
-                      Review Order <ArrowRight className="h-4 w-4" />
+                      Continue to Offers <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* STEP 2: Coupons & Offers */}
+          {step === 'coupon' && (
+            <div className="space-y-4 animate-fade-in">
+              <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                <Ticket className="h-5 w-5 text-violet-600" />
+                Available Offers
+              </h2>
+              
+              <div className="bg-white p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-4">
+                <p className="text-xs text-gray-500 mb-4">We've found the following offers based on the items in your cart. Apply one to get a discount on your order.</p>
+                
+                {loadingCoupons ? (
+                  <div className="flex flex-col items-center justify-center py-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-violet-600 mb-2" />
+                    <span className="text-xs text-gray-500 font-bold tracking-wide">Searching for best offers...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(() => {
+                      // Find applicable coupons (where at least one cart item matches the coupon category)
+                      const applicableCoupons = availableCoupons.filter(c => 
+                        cart.some(item => item.category === c.categorySlug)
+                      );
+
+                      if (applicableCoupons.length === 0) {
+                        return (
+                          <div className="text-center py-8 bg-gray-50 border border-dashed border-gray-200 rounded-xl">
+                            <Tag className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                            <p className="text-xs font-bold text-gray-600">No offers available for this order</p>
+                          </div>
+                        );
+                      }
+
+                      return applicableCoupons.map((c: any) => {
+                        const isApplied = appliedCoupon?.id === c.id;
+                        return (
+                          <div key={c.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${isApplied ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-200 hover:border-violet-300 shadow-xs'}`}>
+                            <div className="flex items-center gap-3">
+                              <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center ${isApplied ? 'bg-emerald-100 text-emerald-600' : 'bg-violet-100 text-violet-600'}`}>
+                                {isApplied ? <CheckCircle className="h-5 w-5" /> : <Tag className="h-5 w-5" />}
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-sm text-gray-900">{c.title}</h4>
+                                <p className="text-xs text-gray-500 font-medium">Save ₹{c.discountAmount} on matching items.</p>
+                              </div>
+                            </div>
+                            
+                            {isApplied ? (
+                              <button type="button" onClick={() => setAppliedCoupon(null)} className="cursor-pointer px-4 py-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold rounded-lg text-xs transition-colors">
+                                Remove
+                              </button>
+                            ) : (
+                              <button type="button" onClick={() => setAppliedCoupon(c)} className="cursor-pointer px-4 py-2 bg-violet-600 text-white hover:bg-violet-700 font-bold rounded-lg text-xs transition-colors shadow-sm">
+                                Apply Coupon
+                              </button>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setStep('address')} className="cursor-pointer px-5 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200">
+                  ← Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep('invoice')}
+                  className="cursor-pointer flex-1 bg-violet-600 hover:bg-violet-700 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-xs shadow-md"
+                >
+                  Review Order <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           )}
 
@@ -629,6 +738,12 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
                     <span>Subtotal</span>
                     <span>₹{cartSubtotal.toLocaleString('en-IN')}</span>
                   </div>
+                  {finalDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-600 font-bold">
+                      <span>Discount ({appliedCoupon?.title})</span>
+                      <span>-₹{finalDiscount.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-base font-black text-gray-900 border-t pt-2 mt-2">
                     <span>Grand Total</span>
                     <span className="text-violet-700">₹{grandTotal.toLocaleString('en-IN')}</span>
@@ -637,7 +752,7 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
               </div>
 
               <div className="flex gap-3">
-                <button type="button" onClick={() => setStep('address')} className="cursor-pointer px-5 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200">
+                <button type="button" onClick={() => setStep('coupon')} className="cursor-pointer px-5 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200">
                   ← Back
                 </button>
                 <button
