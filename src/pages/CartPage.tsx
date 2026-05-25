@@ -77,7 +77,7 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
   const shippingFee = 0;
   
   const hasMatchingCategory = appliedCoupon ? cart.some(item => item.category === appliedCoupon.categorySlug) : false;
-  const finalDiscount = hasMatchingCategory ? appliedCoupon.discountAmount : 0;
+  const finalDiscount = hasMatchingCategory ? (cartSubtotal * appliedCoupon.discountAmount / 100) : 0;
   
   const grandTotal = Math.max(0, cartSubtotal - finalDiscount);
 
@@ -253,6 +253,7 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
           deliveryAddress: chosenAddress,
           paymentMethod,
           totalAmount: grandTotal,
+          appliedCouponId: appliedCoupon ? appliedCoupon.id : null,
           paymentDetails: (paymentMethod === 'debit' || paymentMethod === 'credit') 
             ? { cardLast4: cardNumber.slice(-4), cardName } 
             : (paymentMethod === 'upi') ? { upiId } : {}
@@ -261,7 +262,11 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
 
       if (res.ok) {
         const data = await res.json();
-        setSuccessOrder(data.order || data.orders?.[0] || { id: 'OB-' + Date.now(), totalAmount: grandTotal });
+        const totalPaid = data.orders?.reduce((sum: number, o: any) => sum + o.totalAmount, 0) || grandTotal;
+        setSuccessOrder({ 
+          ...(data.order || data.orders?.[0] || { id: 'OB-' + Date.now() }),
+          totalAmount: totalPaid
+        });
         clearCart();
         setStep('receipt');
       } else {
@@ -622,7 +627,7 @@ export default function CartPage({ onNavigateTo }: CartPageProps) {
                               </div>
                               <div>
                                 <h4 className="font-bold text-sm text-gray-900">{c.title}</h4>
-                                <p className="text-xs text-gray-500 font-medium">Save ₹{c.discountAmount} on matching items.</p>
+                                <p className="text-xs text-gray-500 font-medium">Save {c.discountAmount}% on matching items.</p>
                               </div>
                             </div>
                             

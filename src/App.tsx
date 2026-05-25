@@ -15,6 +15,7 @@ import DashboardCustomer from './components/DashboardCustomer';
 import DashboardVendor from './components/DashboardVendor';
 import DashboardAdmin from './components/DashboardAdmin';
 import DashboardDelivery from './components/DashboardDelivery';
+import CustomerCare from './components/CustomerCare';
 
 import { Loader2 } from 'lucide-react';
 
@@ -159,6 +160,8 @@ function AppContent() {
 
         {currentPage === 'dashboard' && renderDashboardByRole()}
       </main>
+
+      <CustomerCare />
 
       {/* Structured Footer */}
       <footer className="bg-slate-900 text-slate-400 mt-12 py-10 border-t border-slate-800">

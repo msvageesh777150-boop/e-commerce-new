@@ -149,7 +149,18 @@ let db: any = {
   shipment_logs: [],
   schemas: {}, // Holds dynamic multi-tenant sub-databases representing "vendor_[store_name]"
   vehicle_types: [],
-  coupons: []
+  coupons: [],
+  supportConfig: {
+    whatsapp: {
+      enabled: true,
+      number: '+919876543210',
+      defaultMessage: 'Hello, I need help regarding my order/product.'
+    },
+    calls: {
+      enabled: true,
+      numbers: ['+919876543210', '+918001234567']
+    }
+  }
 };
 
 // Seed administrative and user roles in the database securely on startup
@@ -167,6 +178,17 @@ function seedDatabase() {
     { id: 'vt-3', name: 'Parcel Mini Truck' },
     { id: 'vt-4', name: 'Bicycle Fleet' }
   ];
+  db.supportConfig = db.supportConfig || {
+    whatsapp: {
+      enabled: true,
+      number: '+919876543210',
+      defaultMessage: 'Hello, I need help regarding my order/product.'
+    },
+    calls: {
+      enabled: true,
+      numbers: ['+919876543210', '+918001234567']
+    }
+  };
 
   // Enforce admin@gmail.com exists
   if (!db.users.some((u: any) => u.email === 'admin@gmail.com')) {
@@ -1734,9 +1756,17 @@ app.post('/api/orders', async (req, res) => {
 
   if (!caller) return res.status(401).json({ error: 'Customer session context needed.' });
 
-  const { items, deliveryAddress, paymentMethod } = req.body;
+  const { items, deliveryAddress, paymentMethod, appliedCouponId } = req.body;
 
   if (!items || !items.length) return res.status(400).json({ error: 'Empty transaction cart.' });
+
+  let discountPercentage = 0;
+  if (appliedCouponId) {
+    const coupon = db.coupons.find((c: any) => c.id === appliedCouponId);
+    if (coupon && coupon.isActive) {
+      discountPercentage = Number(coupon.discountAmount) || 0;
+    }
+  }
 
   // Separate items by their vendor origin to instantiate sub-orders
   // As in true multi-vendor platform, orders are processed and shipped per vendor!
@@ -1764,7 +1794,10 @@ app.post('/api/orders', async (req, res) => {
   const generatedInvoiceId = 'INV-' + Math.floor(Math.random() * 89999 + 10000);
 
   for (const [vId, group] of Object.entries(vendorGroups)) {
-    const subTotal = group.list.reduce((sum: number, i: any) => sum + (i.price * i.quantity), 0);
+    let subTotal = group.list.reduce((sum: number, i: any) => sum + (i.price * i.quantity), 0);
+    if (discountPercentage > 0) {
+      subTotal = Math.max(0, subTotal - (subTotal * discountPercentage / 100));
+    }
     const orderId = 'OB-' + Math.floor(Math.random() * 89999) + '-' + Math.floor(Math.random() * 899 + 100);
     
     // Create status tracing QR Code URL (or a simulated asset)
@@ -2725,6 +2758,29 @@ app.get('/api/admin/analytics', (req, res) => {
       createdAt: o.createdAt
     }))
   });
+});
+
+// ==========================================
+// SUPPORT CONFIGURATION ENDPOINTS
+// ==========================================
+app.get('/api/support', (req, res) => {
+  res.json(db.supportConfig || {});
+});
+
+app.post('/api/admin/support', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+  
+  if (!caller || caller.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const { whatsapp, calls } = req.body;
+  if (whatsapp) db.supportConfig.whatsapp = whatsapp;
+  if (calls) db.supportConfig.calls = calls;
+  
+  saveDB();
+  res.json({ success: true, supportConfig: db.supportConfig });
 });
 
 // ==========================================

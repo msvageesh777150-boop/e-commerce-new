@@ -33,7 +33,10 @@ import {
   Loader2,
   Store,
   Search,
-  Ticket
+  Ticket,
+  Headset,
+  MessageCircle,
+  Phone
 } from 'lucide-react';
 
 interface DashboardAdminProps {
@@ -44,7 +47,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
   const { token, logout, user } = useAuth();
   const { t } = useLanguage();
 
-  const [activeTab, setActiveTab] = useState<'console' | 'approvals' | 'categories' | 'admins' | 'diagnostics' | 'logistics' | 'vendors' | 'coupons'>('console');
+  const [activeTab, setActiveTab] = useState<'console' | 'approvals' | 'categories' | 'admins' | 'diagnostics' | 'logistics' | 'vendors' | 'coupons' | 'support'>('console');
   
   // Mobile sidebar visibility
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -69,6 +72,11 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
   const [newCouponCategory, setNewCouponCategory] = useState('');
   const [newCouponDiscount, setNewCouponDiscount] = useState('');
   const [editingCouponId, setEditingCouponId] = useState<string | null>(null);
+
+  // Support Config states
+  const [supportWhatsApp, setSupportWhatsApp] = useState({ enabled: true, number: '', defaultMessage: '' });
+  const [supportCalls, setSupportCalls] = useState({ enabled: true, numbers: [''] });
+  const [loadingSupport, setLoadingSupport] = useState(false);
 
   // Audits data
   const [vendorRequests, setVendorRequests] = useState<any[]>([]);
@@ -165,6 +173,56 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
       addToast('Coupons Fetch Error', 'Could not retrieve registered coupons.', 'error');
     } finally {
       setLoadingCoupons(false);
+    }
+  };
+
+  const fetchSupportConfig = async () => {
+    setLoadingSupport(true);
+    try {
+      const res = await fetch('/api/support');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.whatsapp) setSupportWhatsApp(data.whatsapp);
+        if (data.calls) {
+          setSupportCalls({
+            enabled: data.calls.enabled,
+            numbers: data.calls.numbers?.length ? data.calls.numbers : ['']
+          });
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      addToast('Config Fetch Error', 'Could not retrieve support config.', 'error');
+    } finally {
+      setLoadingSupport(false);
+    }
+  };
+
+  const handleSaveSupportConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/admin/support', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          whatsapp: supportWhatsApp,
+          calls: {
+            enabled: supportCalls.enabled,
+            numbers: supportCalls.numbers.filter(n => n.trim() !== '')
+          }
+        })
+      });
+      if (res.ok) {
+        addToast('Config Saved', 'Support configuration updated successfully.', 'success');
+      } else {
+        addToast('Error', 'Failed to save configuration.', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      addToast('Error', 'Network error while saving.', 'error');
     }
   };
 
@@ -959,6 +1017,23 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             <span>Coupons</span>
           </button>
 
+          {/* Customer Care Support Option */}
+          <button type="button"
+            onClick={() => {
+              setActiveTab('support');
+              setMobileSidebarOpen(false);
+              fetchSupportConfig();
+            }}
+            className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all gap-3 ${
+              activeTab === 'support' 
+                ? 'bg-indigo-600 text-white shadow-md font-bold' 
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Headset className="h-4 w-4" />
+            <span>Support Config</span>
+          </button>
+
           {/* Vendors Module option */}
           <button type="button"
             onClick={() => {
@@ -1065,6 +1140,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
               {activeTab === 'approvals' && 'Vendor Shop Onboarding'}
               {activeTab === 'categories' && 'Category & Brand Console'}
               {activeTab === 'coupons' && 'Coupons'}
+              {activeTab === 'support' && 'Customer Care Settings'}
               {activeTab === 'admins' && 'Administrative Deployment'}
               {activeTab === 'diagnostics' && 'System Diagnostics & Snapshots'}
               {activeTab === 'logistics' && 'Logistics Fleet & QR Tracking'}
@@ -2832,8 +2908,8 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Flat Discount Amount (₹)</label>
-                      <input type="number" value={newCouponDiscount} onChange={e => setNewCouponDiscount(e.target.value)} required min="1" placeholder="e.g. 50" className="w-full text-sm px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" />
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Discount Percentage (%)</label>
+                      <input type="number" value={newCouponDiscount} onChange={e => setNewCouponDiscount(e.target.value)} required min="1" max="100" placeholder="e.g. 10" className="w-full text-sm px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" />
                     </div>
                     <div className="flex gap-2">
                       <button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-all shadow-md mt-6 flex items-center justify-center gap-2">
@@ -2883,7 +2959,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                               <p className="text-[11px] text-slate-500 mt-1 flex flex-wrap items-center gap-1.5">
                                 <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-medium">Slug: {c.categorySlug}</span>
                                 <span>•</span>
-                                <span className="font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">₹{c.discountAmount} OFF</span>
+                                <span className="font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">{c.discountAmount}% OFF</span>
                               </p>
                             </div>
                           </div>
@@ -2904,6 +2980,109 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB: SUPPORT CONFIG */}
+          {activeTab === 'support' && (
+            <div className="space-y-8 animate-fade-in">
+              <div className="bg-slate-900 border border-slate-850 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="space-y-1 z-10">
+                  <span className="text-[9px] uppercase font-mono tracking-widest font-extrabold text-teal-400 bg-teal-500/15 py-0.5 px-2 rounded-md border border-teal-500/10 inline-block mb-1">
+                    Support Config
+                  </span>
+                  <h3 className="text-xl font-bold font-display tracking-tight text-white leading-tight">
+                    Customer Care Settings
+                  </h3>
+                  <p className="text-slate-400 text-xs font-sans leading-relaxed max-w-xl">
+                    Configure WhatsApp and direct Call support links. The changes take effect immediately on the floating customer care widget.
+                  </p>
+                </div>
+                <div className="h-16 w-16 bg-white/5 rounded-full flex items-center justify-center shrink-0">
+                  <Headset className="h-8 w-8 text-teal-400 opacity-80" />
+                </div>
+              </div>
+
+              {loadingSupport ? (
+                <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-700 mb-2" />
+                  <p className="text-xs text-gray-400 font-mono">Fetching configuration...</p>
+                </div>
+              ) : (
+                <form onSubmit={handleSaveSupportConfig} className="bg-white border border-gray-200/60 rounded-2xl p-6 shadow-sm space-y-8">
+                  {/* WhatsApp Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4 text-green-600" />
+                        WhatsApp Support
+                      </h4>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={supportWhatsApp.enabled} onChange={(e) => setSupportWhatsApp({...supportWhatsApp, enabled: e.target.checked})} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        <span className="text-xs font-semibold text-slate-600">Enable WhatsApp</span>
+                      </label>
+                    </div>
+                    
+                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${!supportWhatsApp.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">WhatsApp Number</label>
+                        <input type="text" value={supportWhatsApp.number} onChange={e => setSupportWhatsApp({...supportWhatsApp, number: e.target.value})} placeholder="e.g. +919876543210" className="w-full text-sm px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Default Prefill Message</label>
+                        <input type="text" value={supportWhatsApp.defaultMessage} onChange={e => setSupportWhatsApp({...supportWhatsApp, defaultMessage: e.target.value})} placeholder="e.g. Hello, I need help..." className="w-full text-sm px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Call Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-violet-600" />
+                        Call Support
+                      </h4>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={supportCalls.enabled} onChange={(e) => setSupportCalls({...supportCalls, enabled: e.target.checked})} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        <span className="text-xs font-semibold text-slate-600">Enable Direct Calls</span>
+                      </label>
+                    </div>
+
+                    <div className={`space-y-3 ${!supportCalls.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Support Phone Numbers</label>
+                      {supportCalls.numbers.map((num, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <input type="text" value={num} onChange={e => {
+                            const newNums = [...supportCalls.numbers];
+                            newNums[idx] = e.target.value;
+                            setSupportCalls({...supportCalls, numbers: newNums});
+                          }} placeholder="e.g. +918001234567" className="flex-1 text-sm px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                          {supportCalls.numbers.length > 1 && (
+                            <button type="button" onClick={() => {
+                              const newNums = supportCalls.numbers.filter((_, i) => i !== idx);
+                              setSupportCalls({...supportCalls, numbers: newNums});
+                            }} className="px-3 py-2 bg-rose-50 text-rose-600 rounded-lg border border-rose-200 hover:bg-rose-100 transition-colors">
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => {
+                        setSupportCalls({...supportCalls, numbers: [...supportCalls.numbers, '']});
+                      }} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mt-2">
+                        <Plus className="h-3 w-3" /> Add Another Number
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t flex justify-end">
+                    <button type="submit" className="py-2.5 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-all shadow-md flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4" />
+                      Save Configuration
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
 
