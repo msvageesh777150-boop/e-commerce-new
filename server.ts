@@ -7,6 +7,36 @@ import { GoogleGenAI } from '@google/genai';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import QRCode from 'qrcode';
+import { Groq } from 'groq-sdk';
+
+import * as admin from 'firebase-admin';
+
+// Initialize Firebase Admin (requires GOOGLE_APPLICATION_CREDENTIALS or proper config)
+try {
+  admin.initializeApp();
+  console.log('Firebase Admin SDK Initialized');
+} catch (e) {
+  console.warn('Firebase Admin SDK Initialization failed:', e);
+}
+
+// Helper to sync order to Firestore for WhatsApp Cloud Functions
+async function syncOrderToFirestore(order: any) {
+  try {
+    const db = admin.firestore();
+    await db.collection('orders').doc(order.id).set({
+      orderId: order.id,
+      customerPhone: order.customerPhone,
+      customerName: order.customerName,
+      status: order.orderStatus,
+      paymentStatus: order.paymentStatus,
+      totalAmount: order.totalAmount,
+      trackingLink: order.trackingNumber ? `https://omnibazaar.com/track/${order.trackingNumber}` : '',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  } catch (e) {
+    console.error(`Failed to sync order ${order?.id} to Firestore:`, e);
+  }
+}
 
 const app = express();
 const PORT = 3000;
@@ -160,7 +190,8 @@ let db: any = {
       enabled: true,
       numbers: ['+919876543210', '+918001234567']
     }
-  }
+  },
+  ai_histories: []
 };
 
 // Seed administrative and user roles in the database securely on startup
@@ -172,6 +203,7 @@ function seedDatabase() {
   db.delivery_staff = db.delivery_staff || [];
   db.shipments = db.shipments || [];
   db.shipment_logs = db.shipment_logs || [];
+  db.ai_histories = db.ai_histories || [];
   db.vehicle_types = db.vehicle_types || [
     { id: 'vt-1', name: 'Motorcycle / Bike' },
     { id: 'vt-2', name: 'Electric Scooter' },
@@ -1841,6 +1873,9 @@ app.post('/api/orders', async (req, res) => {
     db.orders.push(freshOrder);
     createdOrders.push(freshOrder);
 
+    // Sync to Firestore for WhatsApp notifications
+    await syncOrderToFirestore(freshOrder);
+
     // Dynamic QR and Shipment orchestration
     await ensureShipmentByOrder(freshOrder);
 
@@ -1933,6 +1968,9 @@ app.post('/api/orders/:id/status', async (req, res) => {
 
   // Sync to shipments DB
   await ensureShipmentByOrder(order);
+
+  // Sync to Firestore for WhatsApp notifications
+  await syncOrderToFirestore(order);
 
   saveDB();
   res.json({ success: true, order });
@@ -2783,6 +2821,253 @@ app.post('/api/admin/support', (req, res) => {
   res.json({ success: true, supportConfig: db.supportConfig });
 });
 
+// --- AI CHATBOT LOGIC ---
+
+type ChatMessage = { role: 'user' | 'model' | 'system'; content: string; audioBase64?: string };
+
+const SYSTEM_PROMPT = `
+You are Omni AI, an advanced, professional, and friendly AI Assistant for OmniBazaar, an e-commerce platform.
+Your goals:
+1. Answer customer questions intelligently, naturally, and professionally.
+2. If the user asks about products, orders, coupons, or their account, use the provided context to answer.
+3. NEVER say "I don't know", "I am an AI", or show internal errors. If you lack exact info, give a related helpful answer and ask a follow-up question.
+4. Maintain a smart e-commerce assistant persona. 
+5. Keep answers concise, modern, and friendly.
+6. CRITICAL: ONLY suggest products that are explicitly provided in the live data context below. NEVER make up products, and NEVER suggest products from outside this website. If a requested product is not in the context, politely state it is unavailable in our store.
+
+Here is the current live data context for the user. Use this to provide personalized answers:
+`;
+
+async function generateChatResponse(messages: ChatMessage[], context: string): Promise<string> {
+  const fullMessages = [
+    { role: 'system' as const, content: SYSTEM_PROMPT + context },
+    ...messages
+  ];
+
+  let groqClient: Groq | null = null;
+  const groqEnv = process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "";
+  const groqKeys = groqEnv.split(',').map(k => k.trim()).filter(Boolean);
+  const randomGroqKey = groqKeys[Math.floor(Math.random() * groqKeys.length)];
+
+  if (randomGroqKey) {
+    try {
+      groqClient = new Groq({ apiKey: randomGroqKey });
+    } catch (e) {
+      console.warn('Failed to init GROQ API', e);
+    }
+  }
+
+  const geminiEnv = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "";
+  const geminiKeys = geminiEnv.split(',').map(k => k.trim()).filter(Boolean);
+
+  if (groqClient) {
+    try {
+      const groqMessages = fullMessages.map(m => ({
+        role: m.role === 'model' ? 'assistant' : m.role,
+        content: m.content
+      }));
+
+      const chatCompletion = await groqClient.chat.completions.create({
+        messages: groqMessages as any,
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0.7,
+      });
+
+      if (chatCompletion.choices[0]?.message?.content) {
+        return chatCompletion.choices[0].message.content;
+      }
+    } catch (error: any) {
+      console.error('GROQ API failed, falling back to Gemini:', error);
+      try { require('fs').appendFileSync('ai_error.log', 'GROQ Error: ' + (error.message || error) + '\n'); } catch(e){}
+    }
+  }
+
+  if (geminiKeys.length > 0) {
+    try {
+      const randomKey = geminiKeys[Math.floor(Math.random() * geminiKeys.length)];
+      const geminiClient = new GoogleGenAI({ apiKey: randomKey });
+
+      const geminiHistory = fullMessages.map(m => ({
+        role: m.role === 'system' ? 'user' : m.role === 'model' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
+      
+      const response = await geminiClient.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: geminiHistory,
+      });
+
+      if (response.text) return response.text;
+    } catch (error: any) {
+      console.error('Gemini API fallback failed as well:', error);
+      try { require('fs').appendFileSync('ai_error.log', 'Gemini Error: ' + (error.message || error) + '\n'); } catch(e){}
+    }
+  }
+
+  return "I'm currently processing a lot of requests, but I'm here to help! Could you provide a bit more detail, or would you like to connect with our human support team directly?";
+}
+
+// --- AI CHATBOT ENDPOINT ---
+app.post('/api/ai/chat', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+  const { messages, sessionId } = req.body;
+
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: 'Messages array is required.' });
+  }
+
+  try {
+    let userContext = "User is a Guest. They are not logged in.";
+    if (caller) {
+      const fullUser = db.users.find((u: any) => u.id === caller.id);
+      if (fullUser) {
+        userContext = `User Details:\n- Name: ${fullUser.name}\n- Email: ${fullUser.email}\n- Phone: ${fullUser.phone || 'N/A'}\n- Role: ${fullUser.role}\n- Address: ${fullUser.address || 'Address not provided'}\n- Joined On: ${new Date(fullUser.createdAt || Date.now()).toDateString()}.\nCRITICAL INSTRUCTION: If the user asks for their details or profile (e.g. "who am I" or "what is my name"), ALWAYS reply with ALL of this full information formatted nicely. DO NOT just say their name.\n`;
+        
+        const userOrders = db.orders.filter((o: any) => o.customerId === caller.id).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        if (userOrders.length > 0) {
+          const lastOrder = userOrders[0];
+          userContext += `Last order: ID ${lastOrder.id} for ₹${lastOrder.totalAmount}, Status: ${lastOrder.orderStatus}. `;
+        } else {
+          userContext += `They have no past orders. `;
+        }
+      }
+    }
+
+    const activeCoupons = db.coupons.filter((c: any) => c.isActive).map((c: any) => `${c.title} (${c.discountAmount}% off)`).join(', ');
+    const couponContext = activeCoupons ? `Active coupons: ${activeCoupons}. ` : "No active coupons currently. ";
+
+    const latestMsg = messages[messages.length - 1];
+    let latestUserMsg = latestMsg?.content?.toLowerCase() || '';
+
+    const groqEnv = process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "";
+    const groqKeys = groqEnv.split(',').map(k => k.trim()).filter(Boolean);
+    const randomWhisperKey = groqKeys[Math.floor(Math.random() * groqKeys.length)];
+    const whisperClient = randomWhisperKey ? new Groq({ apiKey: randomWhisperKey }) : null;
+
+    // Handle Audio Transcription via Whisper if audioBase64 exists
+    if (latestMsg?.audioBase64 && whisperClient) {
+      try {
+        const match = latestMsg.audioBase64.match(/^data:(audio\/[^;]+)/);
+        let ext = 'webm';
+        if (match) {
+          if (match[1].includes('mp4')) ext = 'mp4';
+          else if (match[1].includes('mpeg')) ext = 'mpeg';
+          else if (match[1].includes('ogg')) ext = 'ogg';
+          else if (match[1].includes('wav')) ext = 'wav';
+        }
+        
+        const base64Data = latestMsg.audioBase64.substring(latestMsg.audioBase64.indexOf(',') + 1);
+        if (base64Data) {
+          const buffer = Buffer.from(base64Data, 'base64');
+          const tempPath = path.join(process.cwd(), `temp_${Date.now()}.${ext}`);
+          fs.writeFileSync(tempPath, buffer);
+          
+          const transcription = await whisperClient.audio.transcriptions.create({
+            file: fs.createReadStream(tempPath),
+            model: 'whisper-large-v3',
+          });
+          
+          latestUserMsg = transcription.text.toLowerCase();
+          latestMsg.content = transcription.text;
+          
+          if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+        }
+      } catch (e) {
+        console.error('Whisper transcription error:', e);
+      }
+    }
+
+    let searchContext = '';
+    
+    const keywords = latestUserMsg.split(' ').filter((w: string) => w.length > 3);
+    const matchedProducts = db.products.filter((p: any) => 
+      keywords.some((kw: string) => p.name.toLowerCase().includes(kw) || p.category.toLowerCase().includes(kw))
+    ).slice(0, 3);
+    
+    if (matchedProducts.length > 0) {
+      searchContext = `Search results relevant to query: \n` + matchedProducts.map((p: any) => 
+        `- ${p.name} (₹${p.price})\n  ID: ${p.id}\n  Image: ${p.images?.[0] || ''}\n  Link: /product/${p.id}\n  Description: ${p.description}`
+      ).join('\n\n') + `\n\nCRITICAL INSTRUCTION: When showing these products to the user, ALWAYS use markdown to display the image (e.g. ![${matchedProducts[0].name}](${matchedProducts[0].images?.[0]})) and provide a clickable link to view the product (e.g. [View ${matchedProducts[0].name}](/product/${matchedProducts[0].id})).`;
+    }
+
+    const fullContext = `\n--- LIVE DATA CONTEXT ---\n${userContext}\n${couponContext}\n${searchContext}\n-----------------------\n`;
+
+    const aiResponse = await generateChatResponse(messages, fullContext);
+    
+    // Save to history
+    let activeSessionId = sessionId || Date.now().toString();
+    if (caller) {
+      const fullMessagesToSave = [
+        ...messages, 
+        { 
+          id: Date.now().toString(), 
+          role: 'model', 
+          content: aiResponse, 
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+        }
+      ];
+      let userHist = db.ai_histories.find((h: any) => h.userId === caller.id);
+      if (!userHist) {
+        userHist = { userId: caller.id, sessions: [] };
+        db.ai_histories.push(userHist);
+      }
+      if (!userHist.sessions) {
+        userHist.sessions = [{ id: 'legacy', title: 'Legacy Chat', date: new Date().toISOString(), messages: userHist.messages || [] }];
+        delete userHist.messages;
+      }
+      
+      let session = userHist.sessions.find((s: any) => s.id === activeSessionId);
+      if (!session) {
+        session = { 
+          id: activeSessionId, 
+          title: messages.find((m: any) => m.role === 'user')?.content.substring(0, 30) + '...' || 'New Chat',
+          date: new Date().toISOString(),
+          messages: [] 
+        };
+        userHist.sessions.push(session);
+      }
+      session.messages = fullMessagesToSave;
+      saveDB();
+    }
+    
+    res.json({ message: aiResponse, sessionId: activeSessionId });
+  } catch (error) {
+    console.error('AI Chatbot error:', error);
+    res.json({ message: "I'm experiencing a bit of a delay connecting to our brain, but I'm here! Do you need help reaching a human agent?" });
+  }
+});
+
+app.get('/api/ai/history', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+  if (!caller) return res.json({ sessions: [] });
+  
+  const userHist = db.ai_histories.find((h: any) => h.userId === caller.id);
+  if (!userHist) return res.json({ sessions: [] });
+
+  if (userHist.messages && !userHist.sessions) {
+    userHist.sessions = [{ id: 'legacy', title: 'Legacy Chat', date: new Date().toISOString(), messages: userHist.messages }];
+    delete userHist.messages;
+    saveDB();
+  }
+  
+  res.json({ sessions: userHist.sessions || [] });
+});
+
+app.delete('/api/ai/history/:sessionId', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const caller = token ? verifyToken(token) : null;
+  if (!caller) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const userHist = db.ai_histories.find((h: any) => h.userId === caller.id);
+  if (userHist && userHist.sessions) {
+    userHist.sessions = userHist.sessions.filter((s: any) => s.id !== req.params.sessionId);
+    saveDB();
+  }
+  res.json({ success: true });
+});
+
 // ==========================================
 // CUSTOM VITE INTEGRATION RUNTIME
 // ==========================================
@@ -2801,7 +3086,9 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+
+
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`====================================================`);
     console.log(` OMNIBAZAAR MULTI-VENDOR SERVER BOUND TO PORT ${PORT}`);
     console.log(` Environment Mode: ${process.env.NODE_ENV || 'development'}`);

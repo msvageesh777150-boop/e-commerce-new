@@ -43,7 +43,7 @@ export default function CustomerCare() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className="relative z-50 flex flex-col items-end">
       {/* Expanded Menu */}
       {isOpen && (
         <div className="mb-4 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 w-72 animate-fade-in origin-bottom-right">

@@ -15,6 +15,7 @@ import DashboardCustomer from './components/DashboardCustomer';
 import DashboardVendor from './components/DashboardVendor';
 import DashboardAdmin from './components/DashboardAdmin';
 import DashboardDelivery from './components/DashboardDelivery';
+import AiChatbot from './components/AiChatbot';
 import CustomerCare from './components/CustomerCare';
 
 import { Loader2 } from 'lucide-react';
@@ -37,6 +38,18 @@ function AppContent() {
       setHasInitializedRole(true);
     }
   }, [loading, user, hasInitializedRole]);
+
+  React.useEffect(() => {
+    const handleAINavigation = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setSelectedProductId(customEvent.detail);
+      setCurrentPage('product-detail');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.addEventListener('NAVIGATE_TO_PRODUCT', handleAINavigation);
+    return () => window.removeEventListener('NAVIGATE_TO_PRODUCT', handleAINavigation);
+  }, []);
 
   const handleNavigateTo = (page: string) => {
     setCurrentPage(page);
@@ -161,7 +174,14 @@ function AppContent() {
         {currentPage === 'dashboard' && renderDashboardByRole()}
       </main>
 
-      <CustomerCare />
+      <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-4 items-end pointer-events-none">
+        <div className="pointer-events-auto relative">
+          <CustomerCare />
+        </div>
+        <div className="pointer-events-auto relative">
+          <AiChatbot />
+        </div>
+      </div>
 
       {/* Structured Footer */}
       <footer className="bg-slate-900 text-slate-400 mt-12 py-10 border-t border-slate-800">
