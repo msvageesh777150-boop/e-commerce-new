@@ -252,11 +252,11 @@ export default function Header({
           <div className="relative h-6 w-6">
             <div className="absolute inset-0 rounded-full bg-accent/40 blur-xs" />
             <div className="relative h-6 w-6 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-display font-bold text-xs">
-              N
+              O
             </div>
           </div>
-          <span className="font-display text-[17px] font-bold tracking-tight text-foreground">
-            NOVA
+          <span className="font-display text-[17px] font-bold tracking-tight text-foreground uppercase">
+            OMNI BAZAAR
           </span>
         </div>
 
