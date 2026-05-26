@@ -428,20 +428,31 @@
   body:not(.dark) .text-neutral-500 {
     color: var(--foreground) !important;
   }
+
+  /* Make sure selected text colors (like cyan indicators/texts) have excellent contrast on light backgrounds */
+  body:not(.dark) .text-cyan-300,
+  body:not(.dark) .text-cyan-400,
+  body:not(.dark) .text-cyan-450 {
+    color: var(--accent-deep) !important;
+  }
   
-  /* Safe explicit button and badge white text overrides (avoids container card issues) */
-  body:not(.dark) button.text-white,
-  body:not(.dark) button .text-white,
-  body:not(.dark) button,
-  body:not(.dark) button *,
+  /* Safe explicit button and badge white text overrides (only dark backgrounds get forced white) */
   body:not(.dark) .btn-accent,
   body:not(.dark) .bg-accent,
   body:not(.dark) .bg-accent-deep,
   body:not(.dark) .bg-primary,
   body:not(.dark) .bg-neutral-950,
-  body:not(.dark) .bg-neutral-950 *,
   body:not(.dark) .bg-slate-900,
-  body:not(.dark) .bg-slate-900 * {
+  body:not(.dark) .bg-neutral-950 *,
+  body:not(.dark) .bg-slate-900 *,
+  body:not(.dark) button.bg-primary,
+  body:not(.dark) button.bg-primary *,
+  body:not(.dark) button[class*="bg-linear-"],
+  body:not(.dark) button[class*="bg-linear-"] *,
+  body:not(.dark) button[class*="bg-gradient-"],
+  body:not(.dark) button[class*="bg-gradient-"] *,
+  body:not(.dark) button.btn-accent,
+  body:not(.dark) button.btn-accent * {
     color: #ffffff !important;
   }
 
