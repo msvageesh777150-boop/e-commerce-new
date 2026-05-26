@@ -37,11 +37,22 @@
   /* Apple signature easing curve */
   --ease-apple: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Legacy layout theme compatibility */
+  /* Legacy layout theme compatibility & Global Color Redirections */
   --color-void: #020408;
-  --color-indigo-plasma: #6366f1;
-  --color-cyan-plasma: #06b6d4;
-  --color-frost: #e8edf5;
+  --color-indigo-plasma: var(--accent-deep);
+  --color-cyan-plasma: var(--accent);
+  --color-frost: var(--frost);
+
+  --color-indigo-500: var(--accent-deep);
+  --color-indigo-600: var(--accent-deep);
+  --color-indigo-700: var(--accent-deep);
+  --color-cyan-300: var(--accent-soft);
+  --color-cyan-400: var(--accent);
+  --color-cyan-500: var(--accent);
+  --color-cyan-600: var(--accent);
+  --color-blue-500: var(--accent-deep);
+  --color-teal-500: var(--accent);
+  --color-emerald-500: var(--accent);
 }
 
 :root {
@@ -106,11 +117,13 @@
   --muted: oklch(0.24 0.01 80);
   --muted-foreground: oklch(0.7 0.01 80);
   
-  --accent: oklch(0.7 0.18 257);
+  --accent: oklch(0.76 0.09 80);
   --accent-foreground: oklch(0.14 0.008 80);
+  --accent-soft: oklch(0.24 0.02 80);
+  --accent-deep: oklch(0.58 0.08 70);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.18 257);
+  --ring: oklch(0.76 0.09 80);
 }
 
 @layer base {
@@ -371,4 +384,88 @@
   border-radius: 12px;
   z-index: 10;
   background: var(--background) !important;
+}
+
+/* Responsive frost variable */
+:root {
+  --frost: oklch(0.35 0.01 80); /* Dark slate gray in light mode */
+}
+
+.dark {
+  --frost: oklch(0.92 0.01 80); /* Light warm white in dark mode */
+}
+
+/* Global Visibility & High Contrast Overrides for Light Mode */
+@layer base {
+  /* Hardcoded light texts are automatically turned into dark legible colors inside white cards/backgrounds */
+  body:not(.dark) .text-white {
+    color: var(--foreground) !important;
+  }
+  body:not(.dark) .text-frost\/60,
+  body:not(.dark) .text-frost\/70,
+  body:not(.dark) .text-frost\/80,
+  body:not(.dark) .text-frost\/45,
+  body:not(.dark) .text-frost\/30,
+  body:not(.dark) .text-frost {
+    color: var(--frost) !important;
+  }
+  body:not(.dark) .text-neutral-300,
+  body:not(.dark) .text-neutral-400 {
+    color: var(--foreground) !important;
+  }
+  
+  /* Ensure text inside dark elements, active buttons, or golden badges remains white */
+  body:not(.dark) button.text-white,
+  body:not(.dark) button .text-white,
+  body:not(.dark) .btn-accent,
+  body:not(.dark) .bg-accent,
+  body:not(.dark) .bg-accent-deep,
+  body:not(.dark) .bg-primary,
+  body:not(.dark) .bg-neutral-950 .text-white,
+  body:not(.dark) .bg-neutral-950 .text-gradient,
+  body:not(.dark) .bg-neutral-950 p,
+  body:not(.dark) [class*="bg-neutral-950"] *,
+  body:not(.dark) [class*="bg-gradient-"] *,
+  body:not(.dark) [class*="bg-linear-"] *,
+  body:not(.dark) [class*="bg-emerald-"] *,
+  body:not(.dark) [class*="bg-indigo-"] *,
+  body:not(.dark) [class*="bg-blue-"] *,
+  body:not(.dark) [class*="bg-cyan-"] * {
+    color: #ffffff !important;
+  }
+
+  body:not(.dark) [class*="bg-gradient-"],
+  body:not(.dark) [class*="bg-linear-"],
+  body:not(.dark) .bg-accent,
+  body:not(.dark) .bg-accent-deep {
+    color: #ffffff !important;
+  }
+
+  /* Keep golden gradient text working */
+  body:not(.dark) .text-gradient {
+    background: linear-gradient(135deg, var(--accent-deep) 0%, var(--accent) 50%, var(--accent-soft) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent !important;
+  }
+
+  /* Make gold gradient text highly bright and visible inside always-dark elements like Left Pane */
+  .bg-neutral-950 .text-gradient,
+  .bg-black .text-gradient,
+  .dark .text-gradient {
+    background: linear-gradient(135deg, #dfbd69 0%, #cca751 50%, #f3e5ab 100%) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    color: transparent !important;
+    text-shadow: 0 0 20px rgba(204, 167, 81, 0.15) !important;
+  }
+
+  /* Better input placeholder contrast in light mode */
+  body:not(.dark) ::placeholder {
+    color: oklch(0.5 0.01 80) !important;
+    opacity: 0.85 !important;
+  }
+  body:not(.dark) input {
+    color: var(--foreground) !important;
+  }
 }

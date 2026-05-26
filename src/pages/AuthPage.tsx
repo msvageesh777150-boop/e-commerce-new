@@ -229,9 +229,9 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
 
   const activeTab = tabConfig.find(t => t.key === activeRole)!;
 
-  // Cinematic void borders with glowing neon shadows on focus
-  const focusBorderCls = "focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(6,182,212,0.3)] focus:ring-cyan-400/20";
-  const inputCls = `w-full bg-black/40 hover:bg-black/60 focus:bg-black/60 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-frost/35 border border-white/10 outline-none transition-all duration-300 focus:ring-1 ${focusBorderCls}`;
+  // Responsive luxury configurator borders with warm gold accent focus glows
+  const focusBorderCls = "focus:border-accent focus:shadow-accent focus:ring-accent/20";
+  const inputCls = `w-full bg-secondary/40 hover:bg-secondary/70 focus:bg-card rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground placeholder-muted-foreground/50 border border-border outline-none transition-all duration-300 focus:ring-1 ${focusBorderCls}`;
 
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row bg-background select-none text-foreground overflow-hidden font-sans relative grain">
