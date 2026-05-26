@@ -2869,7 +2869,7 @@ async function generateChatResponse(messages: ChatMessage[], context: string): P
 
       const chatCompletion = await groqClient.chat.completions.create({
         messages: groqMessages as any,
-        model: 'llama-3.3-70b-versatile',
+        model: 'llama-3.1-8b-instant',
         temperature: 0.7,
       });
 
@@ -2980,15 +2980,36 @@ app.post('/api/ai/chat', async (req, res) => {
 
     let searchContext = '';
     
-    const keywords = latestUserMsg.split(' ').filter((w: string) => w.length > 3);
-    const matchedProducts = db.products.filter((p: any) => 
-      keywords.some((kw: string) => p.name.toLowerCase().includes(kw) || p.category.toLowerCase().includes(kw))
-    ).slice(0, 3);
+    const lowerMsg = latestUserMsg.toLowerCase();
+    
+    // Check if the user is asking for a specific category
+    const matchedCategory = db.categories.find((c: any) => 
+      lowerMsg.includes(c.name.toLowerCase()) || 
+      lowerMsg.includes(c.slug.toLowerCase().replace('-', ' ')) ||
+      lowerMsg.includes(c.slug.toLowerCase().replace(/[^a-z0-9]/g, ''))
+    );
+    
+    let matchedProducts: any[] = [];
+    
+    if (matchedCategory) {
+      // Bring all products within that category as requested
+      matchedProducts = db.products.filter((p: any) => p.category === matchedCategory.slug);
+    } else {
+      // Filter out common words that shouldn't trigger product search
+      const stopWords = ['product', 'products', 'item', 'items', 'find', 'show', 'search', 'want', 'need', 'give', 'have'];
+      const keywords = latestUserMsg.split(' ').filter((w: string) => w.length > 3 && !stopWords.includes(w.toLowerCase()));
+      
+      if (keywords.length > 0) {
+        matchedProducts = db.products.filter((p: any) => 
+          keywords.some((kw: string) => p.name.toLowerCase().includes(kw) || p.category.toLowerCase().includes(kw))
+        ).slice(0, 10);
+      }
+    }
     
     if (matchedProducts.length > 0) {
       searchContext = `Search results relevant to query: \n` + matchedProducts.map((p: any) => 
         `- ${p.name} (₹${p.price})\n  ID: ${p.id}\n  Image: ${p.images?.[0] || ''}\n  Link: /product/${p.id}\n  Description: ${p.description}`
-      ).join('\n\n') + `\n\nCRITICAL INSTRUCTION: When showing these products to the user, ALWAYS use markdown to display the image (e.g. ![${matchedProducts[0].name}](${matchedProducts[0].images?.[0]})) and provide a clickable link to view the product (e.g. [View ${matchedProducts[0].name}](/product/${matchedProducts[0].id})).`;
+      ).join('\n\n') + `\n\nCRITICAL INSTRUCTION: When showing these products to the user, ALWAYS use markdown to display the image (e.g. ![${matchedProducts[0].name}](${matchedProducts[0].images?.[0]})) and provide a clickable link to view the product (e.g. [View ${matchedProducts[0].name}](/product/${matchedProducts[0].id})). You MUST list ALL provided search results.`;
     }
 
     const fullContext = `\n--- LIVE DATA CONTEXT ---\n${userContext}\n${couponContext}\n${searchContext}\n-----------------------\n`;
