@@ -15,20 +15,23 @@ interface AuthPageProps {
 
 type RoleTab = 'customer' | 'vendor' | 'admin' | 'delivery';
 
-// High-performance Three.js particle sphere for Auth Left panel
+// High-performance Three.js particle sphere for Auth Left panel (Warm Gold Theme)
 function ParticleSphere() {
   const pointsRef = useRef<THREE.Points>(null);
 
-  // Rotate and bob particle sphere
+  // Rotate, bob and breathe particle sphere
   useFrame((state) => {
     if (!pointsRef.current) return;
     const time = state.clock.getElapsedTime();
     pointsRef.current.rotation.y = time * 0.05;
-    pointsRef.current.rotation.x = Math.sin(time * 0.03) * 0.2;
+    pointsRef.current.rotation.x = Math.sin(time * 0.03) * 0.15;
+    // Breathing scale pulse
+    const scale = 1.0 + Math.sin(time * 1.5) * 0.04;
+    pointsRef.current.scale.set(scale, scale, scale);
   });
 
   // Generate sphere particles coordinates
-  const particleCount = 1000;
+  const particleCount = 1200;
   const positions = new Float32Array(particleCount * 3);
   for (let i = 0; i < particleCount; i++) {
     // Math for plotting coordinates on a sphere surface (fibonacci spiral)
@@ -54,11 +57,56 @@ function ParticleSphere() {
         />
       </bufferGeometry>
       <pointsMaterial 
-        color="#06b6d4" 
-        size={0.035} 
+        color="#cca751" 
+        size={0.032} 
         sizeAttenuation={true} 
         transparent 
-        opacity={0.65} 
+        opacity={0.7} 
+      />
+    </points>
+  );
+}
+
+// Ambient stars floating around the sphere in deep space
+function AmbientStars() {
+  const starsRef = useRef<THREE.Points>(null);
+  
+  useFrame((state) => {
+    if (!starsRef.current) return;
+    const time = state.clock.getElapsedTime();
+    starsRef.current.rotation.y = -time * 0.015;
+    starsRef.current.rotation.x = Math.sin(time * 0.01) * 0.05;
+  });
+
+  const starCount = 200;
+  const positions = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount; i++) {
+    const radius = 2.5 + Math.random() * 4.5;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos((Math.random() * 2) - 1);
+    
+    positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+    positions[i * 3 + 2] = radius * Math.cos(phi);
+  }
+
+  return (
+    <points ref={starsRef}>
+      <bufferGeometry>
+        <bufferAttribute 
+          attach="attributes-position"
+          args={[positions, 3]}
+          count={positions.length / 3}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial 
+        color="#cca751" 
+        size={0.016} 
+        sizeAttenuation={true} 
+        transparent 
+        opacity={0.35} 
       />
     </points>
   );
@@ -186,24 +234,25 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
   const inputCls = `w-full bg-black/40 hover:bg-black/60 focus:bg-black/60 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-frost/35 border border-white/10 outline-none transition-all duration-300 focus:ring-1 ${focusBorderCls}`;
 
   return (
-    <div className="min-h-screen w-full flex flex-col md:flex-row bg-[#020408] select-none text-frost overflow-hidden">
+    <div className="min-h-screen w-full flex flex-col md:flex-row bg-background select-none text-foreground overflow-hidden font-sans relative grain">
       
       {/* Left Pane - Levitating 3D particle sphere using React Three Fiber */}
-      <div className="relative md:w-5/12 h-[35vh] md:h-screen text-white p-8 md:p-12 flex flex-col justify-between overflow-hidden border-r border-white/5 select-none bg-black/30">
+      <div className="relative md:w-5/12 h-[45vh] md:h-screen text-white p-8 md:p-12 flex flex-col justify-between overflow-hidden border-r border-border select-none bg-neutral-950">
         
         {/* Glowing backgrounds */}
-        <div className="absolute inset-0 opacity-15 pointer-events-none z-0">
-          <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] rounded-full bg-indigo-500 blur-[150px] animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-cyan-500 blur-[150px] animate-pulse" />
+        <div className="absolute inset-0 opacity-20 pointer-events-none z-0">
+          <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] rounded-full bg-[oklch(0.76_0.09_80)] blur-[160px] animate-pulse" style={{ animationDuration: '8s' }} />
+          <div className="absolute bottom-1/4 right-1/4 w-[350px] h-[350px] rounded-full bg-[oklch(0.58_0.08_70)] blur-[140px] animate-pulse" style={{ animationDuration: '12s' }} />
         </div>
 
         {/* 3D Canvas particle scene */}
         <div className="absolute inset-0 z-1 pointer-events-none">
-          <ErrorBoundary fallback={<div className="absolute inset-0 bg-gradient-to-tr from-indigo-950/15 to-cyan-950/15 animate-pulse" />}>
+          <ErrorBoundary fallback={<div className="absolute inset-0 bg-gradient-to-tr from-accent-deep/15 to-accent-soft/15 animate-pulse" />}>
             <Canvas camera={{ position: [0, 0, 3] }}>
               <Suspense fallback={null}>
-                <ambientLight intensity={0.4} />
+                <ambientLight intensity={0.5} />
                 <ParticleSphere />
+                <AmbientStars />
               </Suspense>
             </Canvas>
           </ErrorBoundary>
@@ -212,25 +261,45 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
         {/* Logo block */}
         <div className="relative z-10 select-none">
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={onNavigateHome}>
-            <div className="h-9 w-9 rounded-xl bg-linear-to-tr from-indigo-500 to-cyan-500 flex items-center justify-center font-bold text-lg border border-white/20 shadow-[0_0_12px_rgba(99,102,241,0.4)]">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-b from-accent-soft via-accent to-accent-deep flex items-center justify-center font-bold text-lg border border-accent/20 text-neutral-950 shadow-accent">
               O
             </div>
-            <span className="text-base font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-white">OmniBazaar</span>
+            <span className="text-base font-bold tracking-tight text-white font-display">OmniBazaar</span>
           </div>
         </div>
 
         {/* floating titles */}
         <div className="my-auto relative z-10 space-y-4">
           <div className="mb-2">
-            {React.createElement(activeTab.icon, { className: 'h-10 w-10 text-cyan-400 mb-2 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]' })}
+            {React.createElement(activeTab.icon, { className: 'h-10 w-10 text-accent mb-2 drop-shadow-[0_0_12px_rgba(212,175,55,0.4)]' })}
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold font-display leading-tight tracking-tight text-white whitespace-pre-line">
-            {activeRole === 'customer' && 'Shop Smarter,\nLive in Orbit'}
-            {activeRole === 'vendor' && 'Sell to\nCosmic Millions'}
-            {activeRole === 'delivery' && 'Deliver &\nEarn in Zero-G'}
-            {activeRole === 'admin' && 'Station\nConsole'}
+          <h1 className="text-3xl sm:text-4xl font-bold font-display leading-tight tracking-tight text-white whitespace-pre-line">
+            {activeRole === 'customer' && (
+              <>
+                Shop Smarter,<br />
+                <span className="text-gradient">Live in Orbit</span>
+              </>
+            )}
+            {activeRole === 'vendor' && (
+              <>
+                Sell to<br />
+                <span className="text-gradient">Cosmic Millions</span>
+              </>
+            )}
+            {activeRole === 'delivery' && (
+              <>
+                Deliver &<br />
+                <span className="text-gradient">Earn in Zero-G</span>
+              </>
+            )}
+            {activeRole === 'admin' && (
+              <>
+                Station<br />
+                <span className="text-gradient">Console Grid</span>
+              </>
+            )}
           </h1>
-          <p className="text-frost/60 text-xs sm:text-sm leading-relaxed max-w-sm font-medium">
+          <p className="text-neutral-300/85 text-xs sm:text-sm leading-relaxed max-w-sm font-medium">
             {activeRole === 'customer' && 'Discover premium collections floating in our multi-vendor parsec marketplace. Escrow secure.'}
             {activeRole === 'vendor' && 'Open your cosmic storefront. Leverage persistent Supabase databases and track platform sales.'}
             {activeRole === 'delivery' && 'Earn flexible allowances delivering cargos within parsec zones. Fair payload shares.'}
@@ -238,8 +307,8 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
           </p>
         </div>
 
-        <div className="relative z-10 border-t border-white/10 pt-4">
-          <p className="text-[10px] text-frost/30 font-mono">© 2026 OmniBazaar · Quantum Core Tech</p>
+        <div className="relative z-10 border-t border-white/5 pt-4">
+          <p className="text-[10px] text-neutral-500 font-mono tracking-wider">© 2026 OMNIBAZAAR · STUDIO SYSTEM</p>
         </div>
       </div>
 
@@ -247,34 +316,35 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
       <div className="relative md:w-7/12 p-6 md:p-12 flex flex-col justify-center items-center z-10">
         
         {/* Glow backdrop behind the glass card */}
-        <div className="absolute w-[400px] h-[400px] rounded-full bg-indigo-500/5 blur-[120px] pointer-events-none" />
+        <div className="absolute w-[450px] h-[450px] rounded-full bg-accent-soft/10 blur-[130px] pointer-events-none" />
 
-        <div className="glassmorphic border border-white/10 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
+        <div className="glass border border-border rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-float relative overflow-hidden grain">
           
           {/* Role selection tab capsules */}
-          <div className="grid grid-cols-4 gap-1.5 mb-6 bg-black/45 p-1 rounded-2xl border border-white/5">
+          <div className="grid grid-cols-4 gap-1.5 mb-6 bg-secondary/80 p-1.5 rounded-2xl border border-border">
             {tabConfig.map(tab => (
               <button
                 key={tab.key}
+                type="button"
                 onClick={() => handleTabSwitch(tab.key)}
                 className={`flex flex-col items-center py-2 px-1 rounded-xl text-[9px] font-bold tracking-wider transition-all cursor-pointer uppercase ${
                   activeRole === tab.key 
-                    ? 'bg-gradient-to-r from-indigo-500/20 to-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.25)] font-extrabold' 
-                    : 'text-frost/50 hover:text-frost'
+                    ? 'bg-card text-accent-deep border border-border shadow-soft font-extrabold' 
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {React.createElement(tab.icon, { className: `h-4 w-4 mb-1 ${activeRole === tab.key ? 'text-cyan-400' : 'text-frost/40'}` })}
+                {React.createElement(tab.icon, { className: `h-4 w-4 mb-1 ${activeRole === tab.key ? 'text-accent' : 'text-muted-foreground/60'}` })}
                 {tab.label}
               </button>
             ))}
           </div>
 
           <div className="mb-6 select-none">
-            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white font-display">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground font-display">
               {isLogin ? `${activeTab.label} Sign In` : `Create ${activeTab.label} Account`}
             </h2>
-            <p className="text-xs text-frost/45 mt-1">
-              {isLogin ? 'Enter quantum keys to proceed.' : 'Input credentials to instantiate network account.'}
+            <p className="text-xs text-muted-foreground mt-1">
+              {isLogin ? 'Enter your credentials to access the studio.' : 'Register a new profile on the OmniBazaar network.'}
             </p>
           </div>
 
@@ -288,7 +358,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
                   animate={{ opacity: 1, x: [0, -10, 10, -10, 10, 0] }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.4 }}
-                  className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-300 text-xs font-semibold flex items-start gap-2.5 font-mono shadow-inner"
+                  className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-start gap-2.5 font-mono shadow-inner"
                 >
                   <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
                   <span>{errorMsg}</span>
@@ -302,7 +372,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="p-3 bg-cyan-500/10 border border-cyan-400/20 rounded-xl text-cyan-300 text-xs font-semibold flex items-start gap-2.5 font-mono shadow-inner animate-pulse"
+                  className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-start gap-2.5 font-mono shadow-inner"
                 >
                   <span className="text-sm font-bold">✓</span>
                   <span>{successMsg}</span>
@@ -313,9 +383,9 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
             {/* Full Name (signup only) */}
             {!isLogin && (
               <div>
-                <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">Full Name *</label>
+                <label className="block text-[9px] font-bold font-mono text-muted-foreground/60 uppercase tracking-widest mb-1.5">Full Name *</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-accent/70" />
                   <input
                     type="text"
                     required
@@ -331,9 +401,9 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
             {/* Store Name (vendor signup only) */}
             {!isLogin && activeRole === 'vendor' && (
               <div>
-                <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">Store Name *</label>
+                <label className="block text-[9px] font-bold font-mono text-muted-foreground/60 uppercase tracking-widest mb-1.5">Store Name *</label>
                 <div className="relative">
-                  <Store className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
+                  <Store className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-accent/70" />
                   <input
                     type="text"
                     required
@@ -348,11 +418,11 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
 
             {/* Email */}
             <div>
-              <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">
+              <label className="block text-[9px] font-bold font-mono text-muted-foreground/60 uppercase tracking-widest mb-1.5">
                 Email Address {isLogin ? '' : '*'}
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-accent/70" />
                 <input
                   type="email"
                   required={!isLogin}
@@ -366,22 +436,22 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
 
             {/* Phone */}
             <div>
-              <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">
+              <label className="block text-[9px] font-bold font-mono text-muted-foreground/60 uppercase tracking-widest mb-1.5">
                 Phone Number {!isLogin ? '*' : '(or use instead of email)'}
               </label>
               <div className="flex gap-2">
                 <select
                   value={countryCode}
                   onChange={e => setCountryCode(e.target.value)}
-                  className="w-24 shrink-0 bg-black/45 rounded-xl px-2 py-2.5 text-xs font-bold border border-white/10 text-frost outline-none cursor-pointer hover:bg-black/60 focus:border-cyan-500/50"
+                  className="w-24 shrink-0 bg-secondary/30 rounded-xl px-2 py-2.5 text-xs font-bold border border-border text-foreground outline-none cursor-pointer hover:bg-secondary/60 transition-colors"
                 >
-                  <option value="+91" className="bg-[#020408] text-frost">🇮🇳 +91</option>
-                  <option value="+1" className="bg-[#020408] text-frost">🇺🇸 +1</option>
-                  <option value="+44" className="bg-[#020408] text-frost">🇬🇧 +44</option>
-                  <option value="+971" className="bg-[#020408] text-frost">🇦🇪 +971</option>
+                  <option value="+91" className="bg-background text-foreground">🇮🇳 +91</option>
+                  <option value="+1" className="bg-background text-foreground">🇺🇸 +1</option>
+                  <option value="+44" className="bg-background text-foreground">🇬🇧 +44</option>
+                  <option value="+971" className="bg-background text-foreground">🇦🇪 +971</option>
                 </select>
                 <div className="relative flex-1">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-accent/70" />
                   <input
                     type="tel"
                     required={!isLogin}
@@ -396,9 +466,9 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
 
             {/* Password */}
             <div>
-              <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">Password *</label>
+              <label className="block text-[9px] font-bold font-mono text-muted-foreground/60 uppercase tracking-widest mb-1.5">Password *</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-accent/70" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -410,7 +480,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-frost/40 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-accent"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -420,9 +490,9 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
             {/* Confirm Password (signup only) */}
             {!isLogin && (
               <div>
-                <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">Confirm Password *</label>
+                <label className="block text-[9px] font-bold font-mono text-muted-foreground/60 uppercase tracking-widest mb-1.5">Confirm Password *</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-accent/70" />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
@@ -434,7 +504,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-frost/40 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-accent"
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -446,13 +516,13 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
             <button
               type="submit"
               disabled={loading}
-              className="cursor-pointer w-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 border border-white/10 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all text-xs uppercase tracking-widest font-display flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+              className="cursor-pointer w-full bg-gradient-to-r from-accent to-accent-deep hover:from-accent-deep hover:to-accent text-white font-bold py-3.5 rounded-xl shadow-accent transition-all text-xs uppercase tracking-widest font-display flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin mx-auto text-white" />
               ) : (
                 <>
-                  <span>Sign In as {activeTab.label}</span>
+                  <span>{isLogin ? 'Sign In as' : 'Sign Up as'} {activeTab.label}</span>
                   <ArrowRight className="h-4.5 w-4.5" />
                 </>
               )}
@@ -469,7 +539,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
                   setErrorMsg(null);
                   setSuccessMsg(null);
                 }}
-                className="text-[10px] font-mono uppercase tracking-widest text-frost/40 hover:text-white transition-colors cursor-pointer font-bold"
+                className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 hover:text-accent-deep transition-colors cursor-pointer font-bold"
               >
                 {isLogin 
                   ? "Instantiate Free Account →" 
