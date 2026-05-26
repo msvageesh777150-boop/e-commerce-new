@@ -1,10 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { Sparkles, Loader2, Flame } from 'lucide-react';
 import HeroSection from '../components/sections/HeroSection';
 import ProductCard from '../components/ui/ProductCard';
-import { motion } from 'motion/react';
+import { motion, useMotionValue, useSpring, useTransform } from 'motion/react';
+
+// Highly-premium interactive 3D Category Card component inspired by opendue.com
+function CategoryCard({ cat, idx, onClick, imgUrl }: { cat: any; idx: number; onClick: () => void; imgUrl: string }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+
+  // Smooth springs for 3D tilt interaction [stiffness: 150, damping: 18]
+  const rx = useSpring(useTransform(my, [-0.5, 0.5], [8, -8]), { stiffness: 150, damping: 18 });
+  const ry = useSpring(useTransform(mx, [-0.5, 0.5], [-8, 8]), { stiffness: 150, damping: 18 });
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const card = cardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    mx.set((e.clientX - rect.left) / rect.width - 0.5);
+    my.set((e.clientY - rect.top) / rect.height - 0.5);
+  };
+
+  const handleMouseLeave = () => {
+    mx.set(0);
+    my.set(0);
+  };
+
+  return (
+    <motion.div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: idx * 0.05, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      style={{ perspective: 1000 }}
+      onClick={onClick}
+      className="cursor-pointer w-full select-none"
+    >
+      <motion.div
+        style={{ rotateX: rx, rotateY: ry, transformStyle: 'preserve-3d' }}
+        className="relative p-6 glassmorphic rounded-2xl border border-white/10 hover:border-accent/40 shadow-soft hover:shadow-[var(--shadow-accent)] flex flex-col items-center text-center space-y-4 group transition-all duration-300 transform-gpu overflow-hidden"
+      >
+        {/* Dynamic metallic light reflection sweep */}
+        <div aria-hidden className="absolute inset-0 bg-radial-glow opacity-0 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none -z-10" />
+
+        {/* Floating gold ring spotlight backdrop */}
+        <div className="relative transform-gpu group-hover:scale-105 transition-transform duration-500">
+          <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-accent/50 to-accent-soft/30 blur-sm opacity-50 group-hover:opacity-100 transition-opacity" />
+          <img 
+            src={imgUrl} 
+            alt={cat.name} 
+            className="relative h-20 w-20 rounded-full object-cover border border-white/10 shadow-[0_0_15px_rgba(204,167,81,0.25)] bg-black/40 z-10" 
+          />
+        </div>
+
+        <div className="space-y-1 z-10">
+          <h5 className="font-extrabold text-white text-sm sm:text-base leading-tight capitalize tracking-wide select-none group-hover:text-accent transition-colors">
+            {cat.name}
+          </h5>
+          <p className="text-[8px] text-frost/45 font-mono uppercase tracking-[0.2em] select-none font-bold">
+            Explore Exhibit
+          </p>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 const getCategoryImageUrl = (slug: string) => {
   const normalized = slug.toLowerCase();
@@ -117,36 +184,22 @@ export default function HomePage({ onNavigateTo, searchQuery, onSelectProductId,
           <Sparkles className="h-5 w-5 text-cyan-400" />
           {t('home.curated_categories')}
         </h3>
-        
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {categoriesList.map((cat, idx) => {
             const imgUrl = getCategoryImageUrl(cat.slug);
             return (
-              <motion.div
+              <CategoryCard
                 key={cat.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.06, type: 'spring' }}
-                whileHover={{ y: -6, scale: 1.02 }}
+                cat={cat}
+                idx={idx}
+                imgUrl={imgUrl}
                 onClick={() => {
                   if (onSelectCategory) {
                     onSelectCategory(cat.slug);
                   }
                   onNavigateTo('shop');
                 }}
-                className="cursor-pointer p-5 glassmorphic rounded-2xl hover:shadow-[0_15px_30px_rgba(99,102,241,0.15)] text-center space-y-3.5 transition-all duration-300 flex flex-col justify-center items-center border border-white/10"
-              >
-                <img 
-                  src={imgUrl} 
-                  alt={cat.name} 
-                  className="h-16 w-16 rounded-full object-cover border border-white/10 shadow-[0_0_15px_rgba(6,182,212,0.3)] bg-black/40" 
-                />
-                <div>
-                  <h5 className="font-extrabold text-white text-sm sm:text-base leading-tight capitalize tracking-wide select-none">{cat.name}</h5>
-                  <p className="text-[9px] text-frost/40 font-mono mt-1 uppercase tracking-widest select-none">{t('home.mapped_tenant')}</p>
-                </div>
-              </motion.div>
+              />
             );
           })}
         </div>

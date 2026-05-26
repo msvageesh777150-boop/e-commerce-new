@@ -1,6 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { ArrowRight, ArrowDown } from 'lucide-react';
-import { motion, Variants, useScroll, useTransform } from 'motion/react';
+import { motion, Variants } from 'motion/react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Stars, Grid } from '@react-three/drei';
+import * as THREE from 'three';
 
 // Word-by-word reveal
 function TextReveal({ text, className, delay = 0.15 }: { text: string; className?: string; delay?: number }) {
@@ -79,48 +82,157 @@ function MagneticButton({ children, onClick, className = "" }: { children: React
   );
 }
 
+// 1. High-fidelity 3D Floating Glass Card
+function FloatingGlassCard() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const borderRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    if (!meshRef.current) return;
+
+    const time = state.clock.getElapsedTime();
+    
+    // Slow cinematic bobbing
+    const bob = Math.sin(time * 0.7) * 0.12;
+
+    // Gentle automatic spin rotation
+    const autoRotX = Math.sin(time * 0.25) * 0.05;
+    const autoRotY = Math.cos(time * 0.25) * 0.05;
+
+    // Viewport-based interactive mouse tilt with Apple easing
+    const targetX = state.pointer.y * 0.45 + autoRotX;
+    const targetY = state.pointer.x * 0.45 + autoRotY;
+
+    meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, targetX, 0.07);
+    meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, targetY, 0.07);
+    meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, bob, 0.07);
+
+    if (borderRef.current) {
+      borderRef.current.rotation.x = meshRef.current.rotation.x;
+      borderRef.current.rotation.y = meshRef.current.rotation.y;
+      borderRef.current.position.y = meshRef.current.position.y;
+    }
+  });
+
+  return (
+    <group>
+      {/* Gold spotlight glow backdrop */}
+      <mesh position={[0, 0, -0.15]}>
+        <planeGeometry args={[3.5, 2.0]} />
+        <meshBasicMaterial 
+          color="#dfbd69" 
+          transparent 
+          opacity={0.05} 
+          blending={THREE.AdditiveBlending} 
+        />
+      </mesh>
+
+      {/* Main Frosted Gold Glass Card */}
+      <mesh ref={meshRef}>
+        <boxGeometry args={[3.2, 1.8, 0.06]} />
+        <meshPhysicalMaterial
+          transmission={0.92}
+          roughness={0.12}
+          thickness={0.55}
+          clearcoat={1.0}
+          clearcoatRoughness={0.08}
+          color="#ffffff"
+          attenuationColor="#cca751"
+          attenuationDistance={1.2}
+          transparent
+          opacity={0.88}
+        />
+      </mesh>
+
+      {/* Glowing boundary gold edge wireframe */}
+      <mesh ref={borderRef}>
+        <boxGeometry args={[3.22, 1.82, 0.07]} />
+        <meshBasicMaterial 
+          color="#cca751" 
+          wireframe 
+          transparent 
+          opacity={0.4} 
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+// 2. Slow-rotating starry space particles
+function CosmicBackdrop() {
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = state.clock.getElapsedTime() * 0.015;
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      <Stars 
+        radius={85} 
+        depth={45} 
+        count={320} 
+        factor={3.5} 
+        saturation={0.75} 
+        fade 
+        speed={1} 
+      />
+    </group>
+  );
+}
+
+// 3. Coordinate Perspective Grid lines
+function GridBackground() {
+  return (
+    <Grid
+      position={[0, -1.8, -0.8]}
+      rotation={[Math.PI / 2.2, 0, 0]}
+      cellSize={0.5}
+      cellThickness={0.9}
+      cellColor="#cca751"
+      sectionSize={2.0}
+      sectionThickness={1.3}
+      sectionColor="#dfbd69"
+      fadeDistance={18}
+      fadeStrength={1}
+      infiniteGrid
+    />
+  );
+}
+
 interface HeroSectionProps {
   onNavigateTo: (page: string) => void;
 }
 
 export default function HeroSection({ onNavigateTo }: HeroSectionProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Parallax tracking of scroll movements
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"]
-  });
-
-  const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
-  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 1.06]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0.35]);
-  const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -100]);
-  const orbY2 = useTransform(scrollYProgress, [0, 1], [0, 70]);
-
   return (
-    <section ref={containerRef} className="relative w-full overflow-hidden pb-16 pt-8 select-none">
+    <section className="relative w-full overflow-hidden select-none min-h-[85vh] lg:min-h-[90vh] flex flex-col justify-center items-center pb-20 pt-10">
       
-      {/* 1. Multi-layered gold glows base */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[680px] glow-hero z-0" />
-      
-      {/* 2. Floating gold ambient orbs */}
-      <motion.div
-        aria-hidden
-        style={{ y: orbY1 }}
-        className="pointer-events-none absolute left-[10%] top-32 hidden h-28 w-28 rounded-full bg-[var(--accent-soft)] opacity-40 blur-3xl float-slow md:block z-0"
-      />
-      <motion.div
-        aria-hidden
-        style={{ y: orbY2 }}
-        className="pointer-events-none absolute right-[12%] top-20 hidden h-36 w-36 rounded-full bg-[var(--accent)] opacity-20 blur-3xl float-slow md:block z-0"
-      />
+      {/* A. Dynamic Three.js Cosmic Gold Backdrop */}
+      <div className="absolute inset-0 -z-10 w-full h-full pointer-events-none overflow-hidden bg-radial-glow opacity-30">
+        <Canvas 
+          camera={{ position: [0, 0, 4.5], fov: 50 }}
+          gl={{ antialias: true, alpha: true }}
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+        >
+          <ambientLight intensity={0.65} />
+          <directionalLight position={[5, 5, 5]} intensity={2.0} color="#dfbd69" />
+          <pointLight position={[-5, -5, -2]} intensity={0.7} color="#cca751" />
+          
+          <FloatingGlassCard />
+          <GridBackground />
+          <CosmicBackdrop />
+        </Canvas>
+      </div>
 
-      {/* 3. Text Descriptions */}
-      <motion.div
-        style={{ opacity: heroOpacity }}
-        className="relative z-10 mx-auto max-w-4xl px-6 pb-12 pt-12 text-center"
-      >
+      {/* B. Glass overlays */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[380px] glow-hero z-0 opacity-40" />
+
+      {/* C. Typography Content (Curated Selection) */}
+      <div className="relative z-10 mx-auto max-w-4xl px-6 text-center">
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -128,13 +240,13 @@ export default function HeroSection({ onNavigateTo }: HeroSectionProps) {
           className="inline-flex items-center gap-2 rounded-full bg-background/80 border border-border backdrop-blur-md px-4.5 py-2 text-[10px] font-mono uppercase tracking-[0.22em] text-accent font-bold"
         >
           <span className="h-1 w-1 rounded-full bg-[var(--accent)]" />
-          <span>New collection · sonus one</span>
+          <span>intelligent marketplace · premium edition</span>
         </motion.div>
 
         <h1 className="mt-8 text-balance text-5xl font-semibold leading-[1.02] tracking-tight md:text-7xl lg:text-[88px] text-foreground font-display">
-          <TextReveal text="Sound," />{' '}
+          <TextReveal text="Commerce," />{' '}
           <span className="text-accent italic">
-            <TextReveal text="sculpted." delay={0.15} />
+            <TextReveal text="curated." delay={0.15} />
           </span>
         </h1>
 
@@ -142,9 +254,9 @@ export default function HeroSection({ onNavigateTo }: HeroSectionProps) {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.8 }}
-          className="mx-auto mt-6 max-w-xl text-pretty text-base text-muted-foreground md:text-lg font-medium leading-relaxed"
+          className="mx-auto mt-6 max-w-2xl text-pretty text-base text-muted-foreground md:text-lg font-medium leading-relaxed"
         >
-          A new chapter in personal audio. Levitate your shopping experience in deep space. Lighter, quieter, infinitely more present.
+          AI-guided intelligence meets a handpicked network of premium vendors. Explore selection, refined.
         </motion.p>
 
         {/* Action launches */}
@@ -172,26 +284,13 @@ export default function HeroSection({ onNavigateTo }: HeroSectionProps) {
             <span>Explore</span>
           </MagneticButton>
         </motion.div>
-      </motion.div>
-
-      {/* 4. Large Parallax card with premium paper film grain */}
-      <div className="relative z-10 mx-auto max-w-4xl px-6">
-        <div className="group relative overflow-hidden rounded-[2.5rem] bg-surface border border-border grain [box-shadow:var(--shadow-float)] aspect-[16/10] sm:aspect-[16/9]">
-          <motion.img
-            src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&q=80"
-            alt="Sonus One headphones"
-            style={{ y: heroY, scale: heroScale }}
-            className="h-full w-full object-cover will-change-transform"
-          />
-          <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background/70 to-transparent" />
-        </div>
       </div>
 
-      {/* 5. Minimalist Golden Line Drawing */}
-      <div aria-hidden className="mx-auto mt-16 h-px max-w-2xl draw-line" />
+      {/* D. Minimalist Golden Line Drawing */}
+      <div aria-hidden className="mx-auto mt-20 h-px w-full max-w-2xl draw-line" />
 
-      {/* 6. Bounce Down hint */}
-      <div className="flex justify-center mt-8">
+      {/* E. Bounce Down exploration hint */}
+      <div className="flex justify-center mt-12">
         <motion.div
           animate={{ y: [0, 8, 0] }}
           transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
