@@ -43,9 +43,23 @@
   --color-cyan-plasma: var(--accent);
   --color-frost: var(--frost);
 
+  --color-indigo-50: var(--accent-soft);
+  --color-indigo-100: var(--accent-soft);
   --color-indigo-500: var(--accent-deep);
   --color-indigo-600: var(--accent-deep);
-  --color-indigo-700: var(--accent-deep);
+  --color-indigo-750: var(--accent-deep);
+  --color-indigo-800: var(--accent-deep);
+  --color-indigo-900: var(--accent-deep);
+  --color-indigo-950: var(--accent-deep);
+  
+  --color-violet-50: var(--accent-soft);
+  --color-violet-100: var(--accent-soft);
+  --color-violet-500: var(--accent);
+  --color-violet-600: var(--accent-deep);
+  --color-violet-750: var(--accent-deep);
+  --color-violet-850: var(--accent-deep);
+
+  --color-purple-950: var(--accent-deep);
   --color-cyan-300: var(--accent-soft);
   --color-cyan-400: var(--accent);
   --color-cyan-500: var(--accent);
@@ -388,7 +402,7 @@
 
 /* Responsive frost variable */
 :root {
-  --frost: oklch(0.35 0.01 80); /* Dark slate gray in light mode */
+  --frost: oklch(0.18 0.005 80); /* Deep charcoal obsidian in light mode to provide excellent contrast at all opacities */
 }
 
 .dark {
@@ -410,34 +424,30 @@
     color: var(--frost) !important;
   }
   body:not(.dark) .text-neutral-300,
-  body:not(.dark) .text-neutral-400 {
+  body:not(.dark) .text-neutral-400,
+  body:not(.dark) .text-neutral-500 {
     color: var(--foreground) !important;
   }
   
-  /* Ensure text inside dark elements, active buttons, or golden badges remains white */
+  /* Safe explicit button and badge white text overrides (avoids container card issues) */
   body:not(.dark) button.text-white,
   body:not(.dark) button .text-white,
+  body:not(.dark) button,
+  body:not(.dark) button *,
   body:not(.dark) .btn-accent,
   body:not(.dark) .bg-accent,
   body:not(.dark) .bg-accent-deep,
   body:not(.dark) .bg-primary,
-  body:not(.dark) .bg-neutral-950 .text-white,
-  body:not(.dark) .bg-neutral-950 .text-gradient,
-  body:not(.dark) .bg-neutral-950 p,
-  body:not(.dark) [class*="bg-neutral-950"] *,
-  body:not(.dark) [class*="bg-gradient-"] *,
-  body:not(.dark) [class*="bg-linear-"] *,
-  body:not(.dark) [class*="bg-emerald-"] *,
-  body:not(.dark) [class*="bg-indigo-"] *,
-  body:not(.dark) [class*="bg-blue-"] *,
-  body:not(.dark) [class*="bg-cyan-"] * {
+  body:not(.dark) .bg-neutral-950,
+  body:not(.dark) .bg-neutral-950 *,
+  body:not(.dark) .bg-slate-900,
+  body:not(.dark) .bg-slate-900 * {
     color: #ffffff !important;
   }
 
-  body:not(.dark) [class*="bg-gradient-"],
-  body:not(.dark) [class*="bg-linear-"],
-  body:not(.dark) .bg-accent,
-  body:not(.dark) .bg-accent-deep {
+  body:not(.dark) .btn-accent *,
+  body:not(.dark) .bg-accent *,
+  body:not(.dark) .bg-accent-deep * {
     color: #ffffff !important;
   }
 
@@ -462,7 +472,7 @@
 
   /* Better input placeholder contrast in light mode */
   body:not(.dark) ::placeholder {
-    color: oklch(0.5 0.01 80) !important;
+    color: oklch(0.4 0.01 80) !important;
     opacity: 0.85 !important;
   }
   body:not(.dark) input {
