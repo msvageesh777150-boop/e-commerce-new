@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, Suspense, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-
 import { Mail, Phone, Lock, User, Store, ShieldAlert, ArrowRight, Loader2, Eye, EyeOff, Truck, Shield } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
+import ErrorBoundary from '../components/ui/ErrorBoundary';
+
 
 interface AuthPageProps {
   onSuccess: (role: string) => void;
@@ -10,6 +14,55 @@ interface AuthPageProps {
 }
 
 type RoleTab = 'customer' | 'vendor' | 'admin' | 'delivery';
+
+// High-performance Three.js particle sphere for Auth Left panel
+function ParticleSphere() {
+  const pointsRef = useRef<THREE.Points>(null);
+
+  // Rotate and bob particle sphere
+  useFrame((state) => {
+    if (!pointsRef.current) return;
+    const time = state.clock.getElapsedTime();
+    pointsRef.current.rotation.y = time * 0.05;
+    pointsRef.current.rotation.x = Math.sin(time * 0.03) * 0.2;
+  });
+
+  // Generate sphere particles coordinates
+  const particleCount = 1000;
+  const positions = new Float32Array(particleCount * 3);
+  for (let i = 0; i < particleCount; i++) {
+    // Math for plotting coordinates on a sphere surface (fibonacci spiral)
+    const k = i + 0.5;
+    const phi = Math.acos(1 - (2 * k) / particleCount);
+    const theta = Math.PI * (1 + 5 ** 0.5) * k;
+    
+    const radius = 1.6;
+    positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+    positions[i * 3 + 2] = radius * Math.cos(phi);
+  }
+
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute 
+          attach="attributes-position"
+          args={[positions, 3]}
+          count={positions.length / 3}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial 
+        color="#06b6d4" 
+        size={0.035} 
+        sizeAttenuation={true} 
+        transparent 
+        opacity={0.65} 
+      />
+    </points>
+  );
+}
 
 export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
   const { t } = useLanguage();
@@ -31,12 +84,9 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-
-
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
 
   const resetForm = () => {
     setName('');
@@ -44,7 +94,6 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
     setPhone('');
     setPassword('');
     setConfirmPassword('');
-
     setStoreName('');
     setVehiclePlate('');
     setErrorMsg(null);
@@ -61,7 +110,6 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
-
 
     if (!isLogin) {
       if (!name.trim()) {
@@ -125,135 +173,155 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
   };
 
   const tabConfig = [
-    { key: 'customer' as RoleTab, label: 'Customer', icon: User, color: 'blue', desc: 'Shop & Order' },
-    { key: 'vendor' as RoleTab, label: 'Vendor', icon: Store, color: 'green', desc: 'Sell Products' },
-    { key: 'delivery' as RoleTab, label: 'Delivery', icon: Truck, color: 'orange', desc: 'Partner' },
-    { key: 'admin' as RoleTab, label: 'Admin', icon: Shield, color: 'purple', desc: 'Manage Platform' },
+    { key: 'customer' as RoleTab, label: 'Customer', icon: User, color: 'indigo', desc: 'Shop & Order' },
+    { key: 'vendor' as RoleTab, label: 'Vendor', icon: Store, color: 'cyan', desc: 'Sell Products' },
+    { key: 'delivery' as RoleTab, label: 'Delivery', icon: Truck, color: 'cyan', desc: 'Partner' },
+    { key: 'admin' as RoleTab, label: 'Admin', icon: Shield, color: 'indigo', desc: 'Manage Platform' },
   ];
 
   const activeTab = tabConfig.find(t => t.key === activeRole)!;
-  const colorMap: Record<string, string> = {
-    blue: 'from-blue-600 to-indigo-700',
-    green: 'from-emerald-600 to-green-700',
-    orange: 'from-orange-500 to-amber-600',
-    purple: 'from-violet-600 to-purple-700',
-  };
-  const btnMap: Record<string, string> = {
-    blue: 'bg-blue-600 hover:bg-blue-700',
-    green: 'bg-emerald-600 hover:bg-emerald-700',
-    orange: 'bg-orange-500 hover:bg-orange-600',
-    purple: 'bg-violet-600 hover:bg-violet-700',
-  };
-  const borderMap: Record<string, string> = {
-    blue: 'focus:border-blue-500 focus:ring-blue-500/30',
-    green: 'focus:border-green-500 focus:ring-green-500/30',
-    orange: 'focus:border-orange-500 focus:ring-orange-500/30',
-    purple: 'focus:border-violet-500 focus:ring-violet-500/30',
-  };
 
-  const inputCls = `w-full bg-gray-50 hover:bg-white focus:bg-white rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 border border-gray-200 outline-none transition-all ${borderMap[activeTab.color]} focus:ring-1`;
+  // Cinematic void borders with glowing neon shadows on focus
+  const focusBorderCls = "focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(6,182,212,0.3)] focus:ring-cyan-400/20";
+  const inputCls = `w-full bg-black/40 hover:bg-black/60 focus:bg-black/60 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-frost/35 border border-white/10 outline-none transition-all duration-300 focus:ring-1 ${focusBorderCls}`;
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50">
+    <div className="min-h-screen w-full flex flex-col md:flex-row bg-[#020408] select-none text-frost overflow-hidden">
       
-      {/* Left Banner */}
-      <div className={`md:w-2/5 text-white p-8 md:p-12 flex flex-col justify-between relative overflow-hidden bg-gradient-to-b ${colorMap[activeTab.color]}`}>
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
-          <div className="absolute -top-1/4 -right-1/4 w-96 h-96 rounded-full bg-white blur-3xl" />
-          <div className="absolute -bottom-1/4 -left-1/4 w-96 h-96 rounded-full bg-white blur-3xl" />
+      {/* Left Pane - Levitating 3D particle sphere using React Three Fiber */}
+      <div className="relative md:w-5/12 h-[35vh] md:h-screen text-white p-8 md:p-12 flex flex-col justify-between overflow-hidden border-r border-white/5 select-none bg-black/30">
+        
+        {/* Glowing backgrounds */}
+        <div className="absolute inset-0 opacity-15 pointer-events-none z-0">
+          <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] rounded-full bg-indigo-500 blur-[150px] animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-cyan-500 blur-[150px] animate-pulse" />
         </div>
 
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={onNavigateHome}>
-            <div className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center font-bold text-xl border border-white/30">
+        {/* 3D Canvas particle scene */}
+        <div className="absolute inset-0 z-1 pointer-events-none">
+          <ErrorBoundary fallback={<div className="absolute inset-0 bg-gradient-to-tr from-indigo-950/15 to-cyan-950/15 animate-pulse" />}>
+            <Canvas camera={{ position: [0, 0, 3] }}>
+              <Suspense fallback={null}>
+                <ambientLight intensity={0.4} />
+                <ParticleSphere />
+              </Suspense>
+            </Canvas>
+          </ErrorBoundary>
+        </div>
+
+        {/* Logo block */}
+        <div className="relative z-10 select-none">
+          <div className="flex items-center gap-2.5 cursor-pointer" onClick={onNavigateHome}>
+            <div className="h-9 w-9 rounded-xl bg-linear-to-tr from-indigo-500 to-cyan-500 flex items-center justify-center font-bold text-lg border border-white/20 shadow-[0_0_12px_rgba(99,102,241,0.4)]">
               O
             </div>
-            <span className="text-lg font-bold tracking-tight">OmniBazaar</span>
+            <span className="text-base font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-white">OmniBazaar</span>
           </div>
         </div>
 
-        <div className="my-12 relative z-10">
-          <div className="mb-4">
-            {React.createElement(activeTab.icon, { className: 'h-12 w-12 text-white/80 mb-4' })}
+        {/* floating titles */}
+        <div className="my-auto relative z-10 space-y-4">
+          <div className="mb-2">
+            {React.createElement(activeTab.icon, { className: 'h-10 w-10 text-cyan-400 mb-2 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]' })}
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight mb-4 leading-tight">
-            {activeRole === 'customer' && 'Shop Smarter,\nLive Better'}
-            {activeRole === 'vendor' && 'Sell to\nMillions'}
-            {activeRole === 'delivery' && 'Deliver &\nEarn More'}
-            {activeRole === 'admin' && 'Platform\nControl'}
+          <h1 className="text-3xl sm:text-4xl font-extrabold font-display leading-tight tracking-tight text-white whitespace-pre-line">
+            {activeRole === 'customer' && 'Shop Smarter,\nLive in Orbit'}
+            {activeRole === 'vendor' && 'Sell to\nCosmic Millions'}
+            {activeRole === 'delivery' && 'Deliver &\nEarn in Zero-G'}
+            {activeRole === 'admin' && 'Station\nConsole'}
           </h1>
-          <p className="text-white/70 text-sm leading-relaxed">
-            {activeRole === 'customer' && 'Discover products from thousands of vendors across India. Fast delivery, secure payments, guaranteed satisfaction.'}
-            {activeRole === 'vendor' && 'Join OmniBazaar and reach millions of shoppers. Manage your store, track orders, and grow your business.'}
-            {activeRole === 'delivery' && 'Become a delivery partner and earn by delivering orders in your area. Flexible hours, fair pay.'}
-            {activeRole === 'admin' && 'Manage the entire marketplace platform. Monitor vendors, users, orders, and analytics.'}
+          <p className="text-frost/60 text-xs sm:text-sm leading-relaxed max-w-sm font-medium">
+            {activeRole === 'customer' && 'Discover premium collections floating in our multi-vendor parsec marketplace. Escrow secure.'}
+            {activeRole === 'vendor' && 'Open your cosmic storefront. Leverage persistent Supabase databases and track platform sales.'}
+            {activeRole === 'delivery' && 'Earn flexible allowances delivering cargos within parsec zones. Fair payload shares.'}
+            {activeRole === 'admin' && 'Platform central administration console. Oversee network vendors, cargo drops, and quantum grids.'}
           </p>
         </div>
 
-        <div className="relative z-10 border-t border-white/20 pt-4">
-          <p className="text-xs text-white/50 font-mono">© 2026 OmniBazaar · Bharat Commerce Tech</p>
+        <div className="relative z-10 border-t border-white/10 pt-4">
+          <p className="text-[10px] text-frost/30 font-mono">© 2026 OmniBazaar · Quantum Core Tech</p>
         </div>
       </div>
 
-      {/* Right Auth Form */}
-      <div className="md:w-3/5 p-8 md:p-12 flex flex-col justify-center bg-white">
-        <div className="max-w-md w-full mx-auto">
+      {/* Right Pane - Frosted Glass centered login/signup forms */}
+      <div className="relative md:w-7/12 p-6 md:p-12 flex flex-col justify-center items-center z-10">
+        
+        {/* Glow backdrop behind the glass card */}
+        <div className="absolute w-[400px] h-[400px] rounded-full bg-indigo-500/5 blur-[120px] pointer-events-none" />
+
+        <div className="glassmorphic border border-white/10 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
           
-          {/* Role Tabs */}
-          <div className="grid grid-cols-4 gap-1.5 mb-6 bg-gray-100 p-1.5 rounded-2xl">
+          {/* Role selection tab capsules */}
+          <div className="grid grid-cols-4 gap-1.5 mb-6 bg-black/45 p-1 rounded-2xl border border-white/5">
             {tabConfig.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => handleTabSwitch(tab.key)}
-                className={`flex flex-col items-center py-2 px-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
+                className={`flex flex-col items-center py-2 px-1 rounded-xl text-[9px] font-bold tracking-wider transition-all cursor-pointer uppercase ${
                   activeRole === tab.key 
-                    ? 'bg-white shadow-sm text-gray-800' 
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-gradient-to-r from-indigo-500/20 to-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.25)] font-extrabold' 
+                    : 'text-frost/50 hover:text-frost'
                 }`}
               >
-                {React.createElement(tab.icon, { className: `h-4 w-4 mb-0.5 ${activeRole === tab.key ? 'text-current' : 'text-gray-400'}` })}
+                {React.createElement(tab.icon, { className: `h-4 w-4 mb-1 ${activeRole === tab.key ? 'text-cyan-400' : 'text-frost/40'}` })}
                 {tab.label}
               </button>
             ))}
           </div>
 
-          <div className="mb-5">
-            <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+          <div className="mb-6 select-none">
+            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white font-display">
               {isLogin ? `${activeTab.label} Sign In` : `Create ${activeTab.label} Account`}
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {isLogin ? 'Enter your credentials to continue.' : 'Fill in your details to create an account.'}
+            <p className="text-xs text-frost/45 mt-1">
+              {isLogin ? 'Enter quantum keys to proceed.' : 'Input credentials to instantiate network account.'}
             </p>
           </div>
 
           <form onSubmit={handleAuthSubmit} className="space-y-4">
             
-            {errorMsg && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-semibold flex items-start gap-2">
-                <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
+            {/* Shaking Error panel on active errorMsg */}
+            <AnimatePresence>
+              {errorMsg && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: [0, -10, 10, -10, 10, 0] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-300 text-xs font-semibold flex items-start gap-2.5 font-mono shadow-inner"
+                >
+                  <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>{errorMsg}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {successMsg && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs font-semibold flex items-start gap-2">
-                <span className="text-lg">✓</span>
-                <span>{successMsg}</span>
-              </div>
-            )}
+            <AnimatePresence>
+              {successMsg && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="p-3 bg-cyan-500/10 border border-cyan-400/20 rounded-xl text-cyan-300 text-xs font-semibold flex items-start gap-2.5 font-mono shadow-inner animate-pulse"
+                >
+                  <span className="text-sm font-bold">✓</span>
+                  <span>{successMsg}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Full Name (signup only) */}
             {!isLogin && (
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Full Name *</label>
+                <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">Full Name *</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    placeholder="e.g. Ravi Kumar"
+                    placeholder="Ravi Kumar"
                     className={inputCls}
                   />
                 </div>
@@ -263,15 +331,15 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
             {/* Store Name (vendor signup only) */}
             {!isLogin && activeRole === 'vendor' && (
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Store Name *</label>
+                <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">Store Name *</label>
                 <div className="relative">
-                  <Store className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Store className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
                   <input
                     type="text"
                     required
                     value={storeName}
                     onChange={e => setStoreName(e.target.value)}
-                    placeholder="e.g. Raju Electronics"
+                    placeholder="Raju Electronics"
                     className={inputCls}
                   />
                 </div>
@@ -280,11 +348,11 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
 
             {/* Email */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">
                 Email Address {isLogin ? '' : '*'}
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
                 <input
                   type="email"
                   required={!isLogin}
@@ -298,22 +366,22 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
 
             {/* Phone */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">
                 Phone Number {!isLogin ? '*' : '(or use instead of email)'}
               </label>
               <div className="flex gap-2">
                 <select
                   value={countryCode}
                   onChange={e => setCountryCode(e.target.value)}
-                  className="w-28 shrink-0 bg-gray-50 rounded-xl px-2 py-2.5 text-xs font-bold border border-gray-200 outline-none cursor-pointer"
+                  className="w-24 shrink-0 bg-black/45 rounded-xl px-2 py-2.5 text-xs font-bold border border-white/10 text-frost outline-none cursor-pointer hover:bg-black/60 focus:border-cyan-500/50"
                 >
-                  <option value="+91">🇮🇳 +91</option>
-                  <option value="+1">🇺🇸 +1</option>
-                  <option value="+44">🇬🇧 +44</option>
-                  <option value="+971">🇦🇪 +971</option>
+                  <option value="+91" className="bg-[#020408] text-frost">🇮🇳 +91</option>
+                  <option value="+1" className="bg-[#020408] text-frost">🇺🇸 +1</option>
+                  <option value="+44" className="bg-[#020408] text-frost">🇬🇧 +44</option>
+                  <option value="+971" className="bg-[#020408] text-frost">🇦🇪 +971</option>
                 </select>
                 <div className="relative flex-1">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
                   <input
                     type="tel"
                     required={!isLogin}
@@ -328,9 +396,9 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
 
             {/* Password */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Password *</label>
+              <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">Password *</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -342,7 +410,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-frost/40 hover:text-white"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -352,9 +420,9 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
             {/* Confirm Password (signup only) */}
             {!isLogin && (
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Confirm Password *</label>
+                <label className="block text-[9px] font-bold font-mono text-frost/45 uppercase tracking-widest mb-1.5">Confirm Password *</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-frost/40" />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
@@ -366,7 +434,7 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-frost/40 hover:text-white"
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -374,20 +442,18 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
               </div>
             )}
 
-
-
             {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className={`cursor-pointer w-full text-white font-bold py-3 rounded-xl shadow-lg transition-all text-sm flex items-center justify-center gap-2 ${btnMap[activeTab.color]}`}
+              className="cursor-pointer w-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 border border-white/10 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all text-xs uppercase tracking-widest font-display flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
             >
               {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-5 w-5 animate-spin mx-auto text-white" />
               ) : (
                 <>
-                  {isLogin ? `Sign In as ${activeTab.label}` : `Create ${activeTab.label} Account`}
-                  <ArrowRight className="h-4 w-4" />
+                  <span>Sign In as {activeTab.label}</span>
+                  <ArrowRight className="h-4.5 w-4.5" />
                 </>
               )}
             </button>
@@ -403,11 +469,11 @@ export default function AuthPage({ onSuccess, onNavigateHome }: AuthPageProps) {
                   setErrorMsg(null);
                   setSuccessMsg(null);
                 }}
-                className="text-xs font-bold text-gray-500 hover:text-gray-800 cursor-pointer"
+                className="text-[10px] font-mono uppercase tracking-widest text-frost/40 hover:text-white transition-colors cursor-pointer font-bold"
               >
                 {isLogin 
-                  ? `Don't have an account? Create one for free →` 
-                  : `Already have an account? Sign in →`
+                  ? "Instantiate Free Account →" 
+                  : "Sign in existing credentials →"
                 }
               </button>
             </div>

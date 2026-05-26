@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import gsap from 'gsap';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -877,37 +878,59 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
   const pendingApprovalsCount = vendorRequests.filter(req => req.status === 'pending').length;
 
   const totalVendors = usersList.filter(u => u.role === 'vendor').length;
+  // Premium GSAP Count-up component for KPI metric numbers
+  function CountUpValue({ value }: { value: number }) {
+    const [displayValue, setDisplayValue] = useState(0);
+
+    useEffect(() => {
+      const obj = { count: 0 };
+      const ctx = gsap.context(() => {
+        gsap.to(obj, {
+          count: value,
+          duration: 1.6,
+          ease: 'power3.out',
+          onUpdate: () => {
+            setDisplayValue(Math.floor(obj.count));
+          }
+        });
+      });
+      return () => ctx.revert();
+    }, [value]);
+
+    return <span>{displayValue}</span>;
+  }
+
   const totalConsumers = usersList.filter(u => u.role === 'customer').length;
   const totalDelivery = usersList.filter(u => u.role === 'delivery').length;
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-800">
+    <div className="flex h-screen bg-[#020408] overflow-hidden font-sans text-frost">
       
       {/* Toast popup window overlay queue */}
       <div className="fixed top-6 right-6 z-250 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
         {toasts.map(t => (
           <div 
             key={t.id} 
-            className={`p-4 rounded-xl shadow-xl border flex gap-3 pointer-events-auto transition-all duration-300 animate-slide-in ${
+            className={`p-4 rounded-xl shadow-xl border flex gap-3 pointer-events-auto transition-all duration-300 animate-slide-in bg-[#020408]/90 backdrop-blur-md ${
               t.type === 'success' 
-                ? 'bg-slate-900 border-emerald-500/20 text-emerald-100' 
+                ? 'border-emerald-500/20 text-emerald-100' 
                 : t.type === 'error' 
-                  ? 'bg-slate-900 border-red-500/20 text-red-100' 
-                  : 'bg-slate-900 border-blue-500/20 text-blue-100'
+                  ? 'border-red-500/20 text-red-100' 
+                  : 'border-cyan-500/20 text-cyan-100'
             }`}
           >
             <div className="mt-0.5">
               {t.type === 'success' && <CheckCircle className="h-4 w-4 text-emerald-400" />}
               {t.type === 'error' && <AlertTriangle className="h-4 w-4 text-red-400" />}
-              {t.type === 'info' && <Clock className="h-4 w-4 text-blue-400" />}
+              {t.type === 'info' && <Clock className="h-4 w-4 text-cyan-400" />}
             </div>
             <div className="flex-1">
               <h5 className="font-bold text-xs text-white">{t.title}</h5>
-              <p className="text-[11px] text-slate-400 mt-0.5 font-sans leading-normal">{t.desc}</p>
+              <p className="text-[11px] text-frost/60 mt-0.5 font-sans leading-normal">{t.desc}</p>
             </div>
             <button type="button" 
               onClick={() => setToasts(prev => prev.filter(item => item.id !== t.id))}
-              className="text-slate-400 hover:text-white place-self-start text-[10px]"
+              className="text-frost/40 hover:text-white place-self-start text-[10px]"
             >
               <X className="h-3 w-3" />
             </button>
@@ -915,35 +938,35 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
         ))}
       </div>
 
-      {/* Sidebar left view pane (Responsive Fixed) */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-slate-100 flex flex-col transform transition-transform duration-350 ease-in-out border-r border-slate-800 lg:translate-x-0 lg:static lg:h-full ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Sidebar left view pane (Responsive Fixed Glass) */}
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 glassmorphic text-frost flex flex-col transform transition-transform duration-350 ease-in-out border border-white/10 m-4 rounded-3xl h-[calc(100vh-2rem)] shadow-[0_20px_50px_rgba(0,0,0,0.8)] lg:translate-x-0 lg:static ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         
         {/* Brand container */}
-        <div className="h-16 flex items-center px-6 border-b border-slate-800 gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-md">
+        <div className="h-16 flex items-center px-6 border-b border-white/10 gap-2.5">
+          <div className="h-8.5 w-8.5 rounded-xl bg-linear-to-tr from-indigo-500 to-cyan-500 flex items-center justify-center font-bold text-white shadow-[0_0_12px_rgba(6,182,212,0.4)]">
             <span>Ω</span>
           </div>
           <div>
-            <h1 className="font-extrabold font-display text-sm tracking-wide text-white">OmniBazaar</h1>
-            <p className="text-[9px] text-indigo-400 font-mono tracking-widest uppercase font-semibold">Administrator</p>
+            <h1 className="font-extrabold font-display text-xs tracking-wide text-white uppercase">OmniBazaar</h1>
+            <p className="text-[8px] text-cyan-400 font-mono tracking-widest uppercase font-black">Administrator</p>
           </div>
         </div>
 
         {/* Dashboard Navigation Menu options */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
           {/* Storefront Link - Returns to standard shopping homepage */}
           <button type="button"
             onClick={() => {
               if (onNavigateTo) onNavigateTo('home');
               setMobileSidebarOpen(false);
             }}
-            className="flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-all gap-3"
+            className="flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg text-frost/60 hover:bg-white/5 hover:text-white transition-all gap-3"
           >
-            <Home className="h-4 w-4 text-slate-400 group-hover:text-white" />
+            <Home className="h-4 w-4 text-cyan-400" />
             <span>Storefront Portal</span>
           </button>
 
-          <div className="h-px bg-slate-800 my-4"></div>
+          <div className="h-px bg-white/10 my-4"></div>
 
           {/* Console Menu Option */}
           <button type="button"
@@ -953,8 +976,8 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             }}
             className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all gap-3 ${
               activeTab === 'console' 
-                ? 'bg-indigo-600 text-white shadow-md font-bold' 
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                ? 'bg-indigo-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold' 
+                : 'text-frost/65 hover:bg-white/5 hover:text-white'
             }`}
           >
             <Activity className="h-4 w-4" />
@@ -969,8 +992,8 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             }}
             className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all justify-between ${
               activeTab === 'approvals' 
-                ? 'bg-indigo-600 text-white shadow-md font-bold' 
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                ? 'bg-indigo-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold' 
+                : 'text-frost/65 hover:bg-white/5 hover:text-white'
             }`}
           >
             <span className="flex items-center gap-3">
@@ -978,7 +1001,7 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
               <span>Pending Approvals</span>
             </span>
             {pendingApprovalsCount > 0 && (
-              <span className="bg-amber-500 text-slate-900 text-[10px] font-mono tracking-tighter px-2 py-0.5 rounded-full font-bold">
+              <span className="bg-cyan-400 text-black text-[9px] font-mono px-2 py-0.5 rounded-full font-bold shadow-[0_0_10px_rgba(6,182,212,0.4)] animate-pulse">
                 {pendingApprovalsCount}
               </span>
             )}
@@ -992,8 +1015,8 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             }}
             className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all gap-3 ${
               activeTab === 'categories' 
-                ? 'bg-indigo-600 text-white shadow-md font-bold' 
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                ? 'bg-indigo-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold' 
+                : 'text-frost/65 hover:bg-white/5 hover:text-white'
             }`}
           >
             <Layers className="h-4 w-4" />
@@ -1009,8 +1032,8 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             }}
             className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all gap-3 ${
               activeTab === 'coupons' 
-                ? 'bg-indigo-600 text-white shadow-md font-bold' 
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                ? 'bg-indigo-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold' 
+                : 'text-frost/65 hover:bg-white/5 hover:text-white'
             }`}
           >
             <Ticket className="h-4 w-4" />
@@ -1026,8 +1049,8 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             }}
             className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all gap-3 ${
               activeTab === 'support' 
-                ? 'bg-indigo-600 text-white shadow-md font-bold' 
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                ? 'bg-indigo-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold' 
+                : 'text-frost/65 hover:bg-white/5 hover:text-white'
             }`}
           >
             <Headset className="h-4 w-4" />
@@ -1044,8 +1067,8 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             }}
             className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all gap-3 ${
               activeTab === 'vendors' 
-                ? 'bg-indigo-600 text-white shadow-md font-bold' 
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                ? 'bg-indigo-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold' 
+                : 'text-frost/65 hover:bg-white/5 hover:text-white'
             }`}
           >
             <Store className="h-4 w-4" />
@@ -1060,8 +1083,8 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             }}
             className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all gap-3 ${
               activeTab === 'admins' 
-                ? 'bg-indigo-600 text-white shadow-md font-bold' 
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                ? 'bg-indigo-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold' 
+                : 'text-frost/65 hover:bg-white/5 hover:text-white'
             }`}
           >
             <Shield className="h-4 w-4" />
@@ -1076,8 +1099,8 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             }}
             className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all gap-3 ${
               activeTab === 'diagnostics' 
-                ? 'bg-indigo-600 text-white shadow-md font-bold' 
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                ? 'bg-indigo-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold' 
+                : 'text-frost/65 hover:bg-white/5 hover:text-white'
             }`}
           >
             <Database className="h-4 w-4" />
@@ -1093,8 +1116,8 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             }}
             className={`flex items-center w-full px-4 py-3 text-xs font-semibold rounded-lg transition-all gap-3 ${
               activeTab === 'logistics' 
-                ? 'bg-indigo-600 text-white shadow-md font-bold' 
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                ? 'bg-indigo-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold' 
+                : 'text-frost/65 hover:bg-white/5 hover:text-white'
             }`}
           >
             <QrCode className="h-4 w-4" />
@@ -1103,19 +1126,19 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
         </nav>
 
         {/* User Card at base */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/40 flex flex-col gap-3">
+        <div className="p-4 border-t border-white/10 bg-black/40 flex flex-col gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-slate-800 border border-slate-700 font-extrabold text-xs text-indigo-400 flex items-center justify-center">
+            <div className="h-9 w-9 rounded-full bg-linear-to-tr from-indigo-500 to-cyan-500 border border-white/20 font-extrabold text-xs text-white flex items-center justify-center shadow-md">
               {user?.name?.charAt(0).toUpperCase() || 'A'}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 text-left">
               <h4 className="text-xs font-bold text-white truncate">{user?.name || 'Paul Joel admin'}</h4>
-              <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+              <p className="text-[9px] text-frost/45 truncate font-mono">{user?.email}</p>
             </div>
           </div>
           <button type="button"
             onClick={logout}
-            className="cursor-pointer w-full text-[11px] font-bold text-slate-400 hover:text-red-400 hover:bg-slate-800/50 py-2 rounded-lg border border-slate-800 transition-all flex items-center justify-center gap-2"
+            className="cursor-pointer w-full text-[10px] font-bold uppercase tracking-wider text-frost/50 hover:text-red-400 hover:bg-red-500/10 py-2 rounded-lg border border-white/10 transition-all flex items-center justify-center gap-2"
           >
             <LogOut className="h-3.5 w-3.5" />
             <span>Sign Out Terminal</span>
@@ -1127,19 +1150,19 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         
         {/* Top header navigation spacer (Mobile button) */}
-        <header className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 z-10 lg:px-8">
+        <header className="h-16 border-b border-white/10 bg-transparent flex items-center justify-between px-6 z-10 lg:px-8">
           <div className="flex items-center gap-3">
             <button type="button"
               onClick={() => setMobileSidebarOpen(true)}
-              className="p-1 text-gray-500 hover:text-slate-850 bg-gray-100 rounded-lg lg:hidden"
+              className="p-1.5 text-frost hover:text-white bg-white/5 border border-white/10 rounded-lg lg:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <h2 className="text-base font-bold font-display text-gray-800 tracking-tight">
+            <h2 className="text-base font-bold font-display text-white tracking-tight select-none">
               {activeTab === 'console' && 'Platform Control Center'}
               {activeTab === 'approvals' && 'Vendor Shop Onboarding'}
               {activeTab === 'categories' && 'Category & Brand Console'}
-              {activeTab === 'coupons' && 'Coupons'}
+              {activeTab === 'coupons' && 'Coupons Engine'}
               {activeTab === 'support' && 'Customer Care Settings'}
               {activeTab === 'admins' && 'Administrative Deployment'}
               {activeTab === 'diagnostics' && 'System Diagnostics & Snapshots'}
@@ -1148,37 +1171,37 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
             </h2>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="text-[10px] font-mono bg-emerald-50 text-emerald-700 tracking-wider font-extrabold px-2.5 py-1 rounded-full border border-emerald-150-10 flex items-center gap-1.5 shadow-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+          <div className="flex items-center gap-4 select-none">
+            <span className="text-[9px] font-mono bg-cyan-500/10 text-cyan-400 tracking-widest font-extrabold px-3 py-1.5 rounded-full border border-cyan-400/20 flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.15)] animate-pulse">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 inline-block"></span>
               CLUSTER_NODE_ONLINE
             </span>
           </div>
         </header>
 
         {/* Content canvas container */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-slate-50/70">
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-transparent">
           
           {/* TAB 1: CONSOLE */}
           {activeTab === 'console' && (
             <div className="space-y-8 animate-fade-in">
               {/* Welcome Alert banner exact styling */}
-              <div className="bg-slate-900 border border-slate-850 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="space-y-1 z-10">
-                  <span className="text-[9px] uppercase font-mono tracking-widest font-extrabold text-blue-400 bg-blue-500/15 py-0.5 px-2 rounded-md border border-blue-500/10 inline-block mb-1 border-indigo-500/10">
+              <div className="glassmorphic border border-white/10 rounded-2xl p-6 text-white shadow-2xl relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="space-y-1.5 z-10 text-left">
+                  <span className="text-[8px] uppercase font-mono tracking-widest font-extrabold text-cyan-400 bg-cyan-500/10 py-1 px-2 rounded border border-cyan-500/25 inline-block mb-1">
                     Active System Session
                   </span>
                   <h3 className="text-xl font-bold font-display tracking-tight text-white leading-tight">
                     Welcome, Administrator {user?.name || 'paul Joel admin'}
                   </h3>
-                  <p className="text-slate-400 text-xs font-sans leading-relaxed max-w-xl">
+                  <p className="text-frost/60 text-xs font-sans leading-relaxed max-w-xl font-medium">
                     Review global performance metrics, approve pending seller workspace onboarding requests, update dynamic taxonomies, and manage user roles under direct secure DB terminal guidelines.
                   </p>
                 </div>
                 {pendingApprovalsCount > 0 && (
                   <button type="button"
                     onClick={() => setActiveTab('approvals')}
-                    className="cursor-pointer font-bold text-xs bg-amber-500 hover:bg-amber-400 text-slate-900 border border-amber-400 py-3 px-5 rounded-xl transition-all shadow-md shrink-0 active:scale-95 flex items-center gap-2"
+                    className="cursor-pointer font-bold text-xs bg-cyan-400 hover:bg-cyan-300 text-black border border-cyan-400/35 py-3 px-5 rounded-xl transition-all shadow-md shrink-0 active:scale-95 flex items-center gap-2"
                   >
                     <span>PENDING APPROVALS ({pendingApprovalsCount})</span>
                     <ArrowUpRight className="h-4 w-4" />
@@ -1187,82 +1210,99 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
               </div>
 
               {/* Dynamic Metric Cards Grid list */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
 
                 {/* Total Consumers */}
-                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest">Total Consumers</span>
-                    <h4 className="text-2xl font-extrabold font-display text-gray-800 mt-1">
-                      {loadingUsers ? '...' : `${totalConsumers}`}
+                <div className="glassmorphic border border-white/10 p-5 rounded-2xl flex items-center justify-between hover:shadow-[0_15px_30px_rgba(99,102,241,0.15)] transition-all">
+                  <div className="text-left">
+                    <span className="text-[9px] font-mono font-bold text-frost/45 uppercase tracking-widest">Total Consumers</span>
+                    <h4 className="text-2xl font-extrabold font-display text-white mt-1 font-mono tracking-wide">
+                      {loadingUsers ? '...' : <CountUpValue value={totalConsumers} />}
                     </h4>
-                    <p className="text-[10px] text-slate-400 font-mono mt-1">
-                      Registered Shoppers
+                    <p className="text-[9px] text-frost/40 font-mono mt-1 uppercase tracking-wider">
+                      Shoppers registered
                     </p>
                   </div>
-                  <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                    <Users className="h-5 w-5" />
+                  
+                  {/* Vector sparkline inside metric card */}
+                  <svg className="w-12 h-6 text-cyan-400 stroke-current fill-none opacity-50" viewBox="0 0 100 30">
+                    <path d="M0,25 Q15,5 30,20 T60,5 T90,25 T100,10" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                  
+                  <div className="h-11 w-11 rounded-xl bg-indigo-500/10 border border-indigo-500/10 flex items-center justify-center text-indigo-400 shadow-inner">
+                    <Users className="h-4.5 w-4.5" />
                   </div>
                 </div>
 
                 {/* Total Vendors */}
-                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest">Total Vendors</span>
-                    <h4 className="text-2xl font-extrabold font-display text-gray-800 mt-1">
-                      {loadingUsers ? '...' : `${totalVendors}`}
+                <div className="glassmorphic border border-white/10 p-5 rounded-2xl flex items-center justify-between hover:shadow-[0_15px_30px_rgba(99,102,241,0.15)] transition-all">
+                  <div className="text-left">
+                    <span className="text-[9px] font-mono font-bold text-frost/45 uppercase tracking-widest">Total Vendors</span>
+                    <h4 className="text-2xl font-extrabold font-display text-white mt-1 font-mono tracking-wide">
+                      {loadingUsers ? '...' : <CountUpValue value={totalVendors} />}
                     </h4>
-                    <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">
-                      Platform Merchants
+                    <p className="text-[9px] text-cyan-400 font-mono font-bold mt-1 uppercase tracking-wider">
+                      Active Merchants
                     </p>
                   </div>
-                  <div className="h-12 w-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
-                    <Building className="h-5 w-5" />
+
+                  <svg className="w-12 h-6 text-cyan-400 stroke-current fill-none opacity-50" viewBox="0 0 100 30">
+                    <path d="M0,10 Q20,25 40,5 T80,20 T100,15" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+
+                  <div className="h-11 w-11 rounded-xl bg-cyan-500/10 border border-cyan-500/10 flex items-center justify-center text-cyan-450 shadow-inner">
+                    <Store className="h-4.5 w-4.5" />
                   </div>
                 </div>
 
                 {/* Total Delivery Partners */}
-                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest">Delivery Partners</span>
-                    <h4 className="text-2xl font-extrabold font-display text-gray-800 mt-1">
-                      {loadingUsers ? '...' : `${totalDelivery}`}
+                <div className="glassmorphic border border-white/10 p-5 rounded-2xl flex items-center justify-between hover:shadow-[0_15px_30px_rgba(99,102,241,0.15)] transition-all">
+                  <div className="text-left">
+                    <span className="text-[9px] font-mono font-bold text-frost/45 uppercase tracking-widest">Delivery Partners</span>
+                    <h4 className="text-2xl font-extrabold font-display text-white mt-1 font-mono tracking-wide">
+                      {loadingUsers ? '...' : <CountUpValue value={totalDelivery} />}
                     </h4>
-                    <p className="text-[10px] text-orange-600 font-mono font-bold mt-1">
-                      Logistics Fleet
+                    <p className="text-[9px] text-indigo-400 font-mono font-bold mt-1 uppercase tracking-wider">
+                      Logistics fleet
                     </p>
                   </div>
-                  <div className="h-12 w-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
-                    <Truck className="h-5 w-5" />
+
+                  <svg className="w-12 h-6 text-cyan-400 stroke-current fill-none opacity-50" viewBox="0 0 100 30">
+                    <path d="M0,20 Q10,5 30,25 T70,10 T100,20" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+
+                  <div className="h-11 w-11 rounded-xl bg-indigo-500/10 border border-indigo-500/10 flex items-center justify-center text-indigo-450 shadow-inner">
+                    <Truck className="h-4.5 w-4.5" />
                   </div>
                 </div>
 
               </div>
 
-              {/* Analytics Chart Block */}
+              {/* Analytics Chart Block (Dark Theme recharts override) */}
               {analytics && analytics.salesByDay && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 select-none">
                   {/* Revenue Trend Line Chart */}
-                  <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden p-6">
-                    <div className="flex justify-between items-center mb-6">
+                  <div className="glassmorphic border border-white/10 rounded-2xl overflow-hidden p-6 shadow-2xl">
+                    <div className="flex justify-between items-center mb-6 text-left">
                       <div>
-                        <h4 className="text-sm font-bold font-display text-gray-800 uppercase tracking-wider">
+                        <h4 className="text-xs font-bold font-display text-white uppercase tracking-wider">
                           Revenue Trend (Last 7 Days)
                         </h4>
-                        <p className="text-xs text-gray-500 mt-1">Platform-wide aggregate sales performance.</p>
+                        <p className="text-[10px] text-frost/45 mt-1 font-medium">Platform-wide aggregate sales performance parsecs.</p>
                       </div>
                     </div>
+                    
                     <div className="h-64 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={analytics.salesByDay} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="date" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
-                          <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(val) => `₹${val}`} />
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255, 255, 255, 0.06)" />
+                          <XAxis dataKey="date" tick={{fontSize: 9, fill: 'rgba(232, 237, 245, 0.65)', fontFamily: 'Space Mono'}} axisLine={false} tickLine={false} />
+                          <YAxis tick={{fontSize: 9, fill: 'rgba(232, 237, 245, 0.65)', fontFamily: 'Space Mono'}} axisLine={false} tickLine={false} tickFormatter={(val) => `₹${val}`} />
                           <RechartsTooltip 
-                            contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            labelStyle={{ color: '#64748b', fontSize: '12px', marginBottom: '4px' }}
+                            contentStyle={{ backgroundColor: '#020408', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#e8edf5', fontSize: '11px', fontFamily: 'Space Mono' }}
+                            labelStyle={{ color: 'rgba(232, 237, 245, 0.5)', fontSize: '10px' }}
                           />
-                          <Line type="monotone" dataKey="amount" name="Revenue" stroke="#4f46e5" strokeWidth={3} dot={{r: 4, fill: '#4f46e5', strokeWidth: 2, stroke: '#fff'}} activeDot={{r: 6}} />
+                          <Line type="monotone" dataKey="amount" name="Revenue" stroke="#06b6d4" strokeWidth={3} dot={{r: 4, fill: '#06b6d4', strokeWidth: 2, stroke: '#020408'}} activeDot={{r: 6}} />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -1270,26 +1310,26 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
 
                   {/* Top Products Bar Chart */}
                   {analytics.topProducts && analytics.topProducts.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden p-6">
-                      <div className="flex justify-between items-center mb-6">
+                    <div className="glassmorphic border border-white/10 rounded-2xl overflow-hidden p-6 shadow-2xl">
+                      <div className="flex justify-between items-center mb-6 text-left">
                         <div>
-                          <h4 className="text-sm font-bold font-display text-gray-800 uppercase tracking-wider">
+                          <h4 className="text-xs font-bold font-display text-white uppercase tracking-wider">
                             Top Performing Products
                           </h4>
-                          <p className="text-xs text-gray-500 mt-1">Highest sales volume across all merchants.</p>
+                          <p className="text-[10px] text-frost/45 mt-1 font-medium">Highest sales volume across all merchants.</p>
                         </div>
                       </div>
                       <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={analytics.topProducts} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="name" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(val) => val.substring(0, 10) + '...'} />
-                            <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255, 255, 255, 0.06)" />
+                            <XAxis dataKey="name" tick={{fontSize: 9, fill: 'rgba(232, 237, 245, 0.65)', fontFamily: 'Space Mono'}} axisLine={false} tickLine={false} tickFormatter={(val) => val.substring(0, 10) + '...'} />
+                            <YAxis tick={{fontSize: 9, fill: 'rgba(232, 237, 245, 0.65)', fontFamily: 'Space Mono'}} axisLine={false} tickLine={false} />
                             <RechartsTooltip 
-                              contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                              cursor={{ fill: '#f8fafc' }}
+                              contentStyle={{ backgroundColor: '#020408', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#e8edf5', fontSize: '11px', fontFamily: 'Space Mono' }}
+                              cursor={{ fill: 'rgba(255, 255, 255, 0.02)' }}
                             />
-                            <Bar dataKey="sales" name="Units Sold" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="sales" name="Units Sold" fill="#6366f1" radius={[4, 4, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
@@ -1299,19 +1339,19 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
               )}
 
               {/* Central Table Block: Users accounts role & status */}
-              <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
-                <div className="p-6 border-b border-gray-150-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="glassmorphic rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+                <div className="p-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
                   <div>
-                    <h4 className="text-sm font-bold font-display text-gray-800 uppercase tracking-wider">
+                    <h4 className="text-xs font-bold font-display text-white uppercase tracking-wider">
                       Global Platform Accounts & Role Management
                     </h4>
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                    <p className="text-[10px] text-frost/45 mt-1 leading-relaxed font-semibold">
                       Re-assign authorized roles, and suspend/reactivate client and merchant network profiles immediately.
                     </p>
                   </div>
                   <button type="button"
                     onClick={fetchUsers}
-                    className="cursor-pointer text-xs font-bold text-indigo-600 hover:text-indigo-850 px-3 py-1.5 rounded-lg border bg-slate-50 border-gray-200"
+                    className="cursor-pointer text-xs font-bold text-cyan-400 hover:text-cyan-300 px-4 py-2 border border-white/10 rounded-lg bg-white/5 transition-all active:scale-95"
                   >
                     Refresh Table Logs
                   </button>
@@ -1319,16 +1359,16 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
 
                 <div className="overflow-x-auto">
                   {loadingUsers ? (
-                    <div className="p-12 text-center text-xs font-mono text-gray-500">
-                      Querying cluster nodes list...
+                    <div className="p-12 text-center text-xs font-mono text-frost/40">
+                      Querying platform accounts nodes list...
                     </div>
                   ) : usersList.length === 0 ? (
-                    <div className="p-12 text-center text-xs font-mono text-gray-500">
+                    <div className="p-12 text-center text-xs font-mono text-frost/40">
                       No platform account tables initiated.
                     </div>
                   ) : (
                     <table className="w-full text-left text-xs align-middle">
-                      <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b">
+                      <thead className="bg-white/[0.02] text-frost/50 uppercase tracking-widest text-[9px] font-mono font-bold border-b border-white/10">
                         <tr>
                           <th className="py-4 px-6">Member Details</th>
                           <th className="py-4 px-6">Authority Level</th>
@@ -1336,18 +1376,18 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                           <th className="py-4 px-6 text-right">Interactive Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-150-10">
+                      <tbody className="divide-y divide-white/5">
                         {usersList.map(uItem => (
-                          <tr key={uItem.id} className="hover:bg-slate-50/50 transition-colors">
+                          <tr key={uItem.id} className="hover:bg-white/[0.03] transition-colors border-b border-white/[0.02]">
                             {/* Member Details */}
                             <td className="py-4.5 px-6">
                               <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center font-bold text-slate-700 text-xs border border-gray-200">
+                                <div className="h-9 w-9 bg-white/5 rounded-full flex items-center justify-center font-bold text-white text-xs border border-white/10 shadow-inner select-none">
                                   {uItem.name ? uItem.name.charAt(0).toUpperCase() : '?'}
                                 </div>
-                                <div>
-                                  <h5 className="font-bold text-gray-800 text-xs sm:text-sm">{uItem.name}</h5>
-                                  <p className="text-[10px] text-gray-400 font-mono mt-0.5 select-all">{uItem.email}</p>
+                                <div className="text-left">
+                                  <h5 className="font-extrabold text-white text-xs sm:text-sm">{uItem.name}</h5>
+                                  <p className="text-[10px] text-frost/45 font-mono mt-0.5 select-all">{uItem.email}</p>
                                 </div>
                               </div>
                             </td>
@@ -1357,21 +1397,21 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                               <select
                                 value={uItem.role}
                                 onChange={(e) => updateAuthorityLevel(uItem.id, e.target.value)}
-                                className="bg-gray-50 border border-gray-200 p-2 text-[11px] rounded-lg font-bold text-slate-700 focus:outline-hidden focus:border-indigo-500/50 cursor-pointer min-w-36"
+                                className="bg-black border border-white/10 p-2 text-[10px] rounded-lg font-bold text-frost focus:outline-hidden focus:border-cyan-500/50 cursor-pointer min-w-36 font-mono"
                               >
-                                <option value="customer">Customer Member</option>
-                                <option value="vendor">Vendor Merchant</option>
-                                <option value="delivery">Platform Operator</option>
-                                <option value="admin">Platform Administrator</option>
+                                <option value="customer" className="bg-[#020408]">Customer Member</option>
+                                <option value="vendor" className="bg-[#020408]">Vendor Merchant</option>
+                                <option value="delivery" className="bg-[#020408]">Platform Operator</option>
+                                <option value="admin" className="bg-[#020408]">Platform Administrator</option>
                               </select>
                             </td>
 
                             {/* Status badge */}
                             <td className="py-4.5 px-6">
-                              <span className={`px-2.5 py-0.5 rounded-full inline-block font-mono font-extrabold text-[9px] uppercase border ${
+                              <span className={`px-2.5 py-1 rounded-full inline-block font-mono font-extrabold text-[8px] uppercase border tracking-wider select-none ${
                                 uItem.isSuspended 
-                                  ? 'bg-red-50 text-red-700 border-red-150' 
-                                  : 'bg-emerald-50 text-emerald-700 border-emerald-150'
+                                  ? 'bg-rose-500/10 text-rose-450 border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.15)] animate-pulse' 
+                                  : 'bg-cyan-500/10 text-cyan-400 border-cyan-400/20 shadow-[0_0_8px_rgba(6,182,212,0.15)]'
                               }`}>
                                 {uItem.isSuspended ? '⚠️ SUSPENDED' : '● ACTIVE ACCOUNT'}
                               </span>
@@ -1380,24 +1420,25 @@ export default function DashboardAdmin({ onNavigateTo }: DashboardAdminProps) {
                             {/* Suspension Actions */}
                             <td className="py-4.5 px-6 text-right">
                               {uItem.id === user?.id ? (
-                                <span className="text-[10px] text-gray-400 font-semibold italic px-3 py-1 bg-slate-100 border rounded-lg whitespace-nowrap inline-block">
-                                  Your Current Node
+                                <span className="text-[9px] text-frost/40 font-mono uppercase tracking-widest font-bold px-3 py-1 bg-white/5 border border-white/5 rounded-lg whitespace-nowrap inline-block select-none">
+                                  Current Node
                                 </span>
                               ) : (
                                 <button type="button"
                                   onClick={() => toggleUserSuspension(uItem.id)}
-                                  className={`cursor-pointer text-[10px] font-bold py-1.5 px-3 rounded-lg border transition-all whitespace-nowrap inline-block ${
+                                  className={`cursor-pointer text-[9px] font-bold font-mono uppercase tracking-wider py-1.5 px-3 rounded-lg border transition-all whitespace-nowrap inline-block active:scale-95 ${
                                     uItem.isSuspended 
-                                      ? 'bg-emerald-550 border-emerald-350 hover:bg-emerald-600 text-white' 
-                                      : 'bg-red-50 border-red-150 text-red-700 hover:bg-red-100'
+                                      ? 'bg-cyan-500/10 border-cyan-400/25 hover:bg-cyan-500/20 text-cyan-400' 
+                                      : 'bg-rose-500/10 border-rose-500/20 text-rose-450 hover:bg-rose-500/20'
                                   }`}
                                 >
-                                  {uItem.isSuspended ? 'Reactivate Profile' : '❌ SUSPEND'}
+                                  {uItem.isSuspended ? 'Recommission Node' : '❌ De-auth'}
                                 </button>
                               )}
                             </td>
                           </tr>
                         ))}
+
                       </tbody>
                     </table>
                   )}

@@ -2,6 +2,11 @@ import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { CartProvider } from './context/CartContext';
+import SmoothScroll from './components/ui/SmoothScroll';
+import CustomCursor from './components/ui/CustomCursor';
+import AntigravityField from './components/ui/AntigravityField';
+import ErrorBoundary from './components/ui/ErrorBoundary';
+
 
 import Header from './components/Header';
 import HomePage from './pages/HomePage';
@@ -70,10 +75,10 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#020408] flex items-center justify-center select-none text-frost">
         <div className="text-center font-mono text-xs">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-violet-600 mb-2" />
-          <p className="text-gray-500 font-bold">Loading OmniBazaar...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-cyan-400 mb-3" />
+          <p className="text-frost/65 font-bold uppercase tracking-widest">Warping OmniBazaar...</p>
         </div>
       </div>
     );
@@ -120,8 +125,16 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 flex flex-col justify-between">
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between relative z-10 overflow-hidden">
       
+      {/* Ambient background glows + parsec grid overlay */}
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-0 bg-radial-glow opacity-65" />
+        <div className="absolute -left-40 top-1/3 h-[40rem] w-[40rem] rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute right-0 top-2/3 h-[30rem] w-[30rem] rounded-full bg-accent/10 blur-3xl" />
+        <div className="absolute inset-0 grid-lines opacity-30" />
+      </div>
+
       {/* Top Banner Navigation Header */}
       <Header
         currentPage={currentPage}
@@ -132,7 +145,7 @@ function AppContent() {
       />
 
       {/* Main Pages router body */}
-      <main className="flex-1">
+      <main className="flex-1 pt-28 md:pt-32">
         {currentPage === 'home' && (
           <HomePage
             onNavigateTo={handleNavigateTo}
@@ -184,24 +197,24 @@ function AppContent() {
       </div>
 
       {/* Structured Footer */}
-      <footer className="bg-slate-900 text-slate-400 mt-12 py-10 border-t border-slate-800">
+      <footer className="bg-black/60 text-frost/50 mt-12 py-10 border-t border-white/10 backdrop-blur-md z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-xs font-mono">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-800 pb-6 mb-6">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-white/10 pb-6 mb-6">
             <div>
-              <h5 className="font-bold text-white text-sm font-display tracking-tight">OmniBazaar</h5>
-              <p className="mt-1">India's Premium Multi-Vendor Marketplace</p>
+              <h5 className="font-bold text-white text-sm font-display tracking-wide uppercase">OmniBazaar</h5>
+              <p className="mt-1 text-frost/45">Premium Zero-Gravity Multi-Vendor Marketplace</p>
             </div>
             
-            <div className="flex gap-4">
-              <button onClick={() => handleNavigateTo('home')} className="cursor-pointer hover:text-white transition-colors">Home</button>
-              <button onClick={() => handleNavigateTo('shop')} className="cursor-pointer hover:text-white transition-colors">Shop</button>
-              <button onClick={() => handleNavigateTo('cart')} className="cursor-pointer hover:text-white transition-colors">Cart</button>
-              <button onClick={() => handleNavigateTo('dashboard')} className="cursor-pointer hover:text-white transition-colors">Dashboard</button>
+            <div className="flex gap-6 font-bold text-frost/70">
+              <button onClick={() => handleNavigateTo('home')} className="cursor-pointer hover:text-white hover:text-cyan-400 transition-colors uppercase tracking-wider">Home</button>
+              <button onClick={() => handleNavigateTo('shop')} className="cursor-pointer hover:text-white hover:text-cyan-400 transition-colors uppercase tracking-wider">Shop</button>
+              <button onClick={() => handleNavigateTo('cart')} className="cursor-pointer hover:text-white hover:text-cyan-400 transition-colors uppercase tracking-wider">Cart</button>
+              <button onClick={() => handleNavigateTo('dashboard')} className="cursor-pointer hover:text-white hover:text-cyan-400 transition-colors uppercase tracking-wider">Console</button>
             </div>
           </div>
 
-          <p className="text-center">
-            © 2026 OmniBazaar · Secure Multi-Vendor Marketplace · All Rights Reserved.
+          <p className="text-center text-frost/30 tracking-widest font-bold uppercase text-[9px]">
+            © 2026 OmniBazaar · Secure zero-gravity multitenant system · All Rights Reserved.
           </p>
         </div>
       </footer>
@@ -212,12 +225,18 @@ function AppContent() {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <CartProvider>
-          <AppContent />
-        </CartProvider>
-      </AuthProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <AuthProvider>
+          <CartProvider>
+            <SmoothScroll>
+              <CustomCursor />
+              <AntigravityField />
+              <AppContent />
+            </SmoothScroll>
+          </CartProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }

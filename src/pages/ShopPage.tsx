@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
-import { Search, Heart, ShoppingCart, SlidersHorizontal, Check, Eye, Loader2, Star, ArrowRight } from 'lucide-react';
+import { Search, SlidersHorizontal, Check, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import ProductCard from '../components/ui/ProductCard';
 
 interface ShopPageProps {
   onNavigateTo: (page: string) => void;
@@ -9,6 +11,27 @@ interface ShopPageProps {
   selectedCategory: string;
   onSelectCategory: (category: string) => void;
   onSelectProductId: (productId: string) => void;
+}
+
+// Shimmer Skeleton matching the ProductCard shape precisely
+function ShimmerSkeleton() {
+  return (
+    <div className="glassmorphic rounded-2xl p-4 border border-white/10 w-full flex flex-col justify-between animate-pulse select-none">
+      <div className="space-y-4">
+        <div className="aspect-square w-full bg-white/5 rounded-xl border border-white/5" />
+        <div className="space-y-2.5">
+          <div className="flex justify-between">
+            <div className="h-3 w-12 bg-white/5 rounded" />
+            <div className="h-3 w-12 bg-white/5 rounded" />
+          </div>
+          <div className="h-4 w-3/4 bg-white/10 rounded" />
+          <div className="h-3 w-5/6 bg-white/5 rounded italic" />
+          <div className="h-3 w-16 bg-white/5 rounded mt-2" />
+        </div>
+      </div>
+      <div className="h-8 w-full bg-white/10 rounded-lg mt-4 border border-white/5" />
+    </div>
+  );
 }
 
 export default function ShopPage({
@@ -24,7 +47,6 @@ export default function ShopPage({
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState<any[]>([]);
-
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
 
   const [localSearch, setLocalSearch] = useState('');
@@ -135,46 +157,62 @@ export default function ShopPage({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center gap-1.5 text-xs text-gray-400 font-mono mb-6 pb-2 border-b border-gray-100">
-        <button type="button" onClick={() => onNavigateTo('home')} className="cursor-pointer hover:text-indigo-650 transition-colors">Home</button>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 select-none">
+      
+      {/* Breadcrumb - Neon indicator */}
+      <div className="flex items-center gap-2.5 text-xs text-frost/40 font-mono mb-6 pb-3 border-b border-white/10 select-none">
+        <button type="button" onClick={() => onNavigateTo('home')} className="cursor-pointer hover:text-cyan-400 transition-colors">Home</button>
         <span>/</span>
-        <span className="text-gray-600 font-bold">Browse Shop</span>
+        <span className="text-frost font-bold">Browse Catalog</span>
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
-        <aside className="w-full md:w-64 shrink-0 bg-white border border-gray-200/80 p-5 rounded-2xl shadow-xs h-fit space-y-6">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-            <h3 className="font-bold font-display text-gray-800 text-sm flex items-center gap-2">
-              <SlidersHorizontal className="h-4 w-4 text-indigo-600" />
+        
+        {/* sidebar Filters panel - Glass Card */}
+        <aside className="w-full md:w-64 shrink-0 glassmorphic p-5 rounded-2xl h-fit space-y-6 border border-white/10">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <h3 className="font-bold font-display text-white text-sm flex items-center gap-2">
+              <SlidersHorizontal className="h-4.5 w-4.5 text-cyan-400" />
               Catalog Filters
             </h3>
-            <button type="button" onClick={clearFilters} className="text-[10px] text-gray-400 hover:text-red-500 font-bold tracking-wider uppercase">Clear All</button>
+            <button 
+              type="button" 
+              onClick={clearFilters} 
+              className="text-[10px] text-frost/45 hover:text-red-400 transition-colors font-mono font-bold tracking-wider uppercase"
+            >
+              Clear All
+            </button>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="block text-[10px] uppercase font-bold text-gray-700 tracking-wider">Keyword Search</label>
+          {/* Keyword search input */}
+          <div className="space-y-2">
+            <label className="block text-[9px] uppercase font-bold text-frost/50 tracking-widest font-mono">Keyword Search</label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-frost/40" />
               <input
                 type="text"
-                placeholder="Search titles, brands..."
+                placeholder="Search catalog..."
                 value={localSearch}
                 onChange={e => setLocalSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs border rounded-xl outline-none focus:border-violet-500 font-mono"
+                className="w-full pl-9 pr-3 py-2 text-xs bg-black/30 border border-white/10 hover:border-white/20 focus:border-cyan-500/50 rounded-xl text-frost placeholder-frost/30 outline-none transition-colors font-mono font-medium"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-[10px] uppercase font-bold text-gray-700 tracking-wider">Filter Category</label>
-            <div className="space-y-1">
+          {/* Categories Pills - Aurora active indicator */}
+          <div className="space-y-2.5">
+            <label className="block text-[9px] uppercase font-bold text-frost/50 tracking-widest font-mono">Filter Category</label>
+            <div className="space-y-1.5">
               <button type="button"
                 onClick={() => { setCategoryFilter('all'); onSelectCategory('all'); }}
-                className={`cursor-pointer w-full text-left px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${categoryFilter === 'all' ? 'bg-violet-50 text-violet-700 border-l-2 border-violet-600' : 'text-gray-600 hover:bg-gray-50'}`}
+                className={`cursor-pointer w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all ${
+                  categoryFilter === 'all' 
+                    ? 'bg-indigo-500/15 text-cyan-400 border-l-4 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]' 
+                    : 'text-frost/65 hover:bg-white/5 hover:text-white'
+                }`}
               >
                 <span>All Categories</span>
-                {categoryFilter === 'all' && <Check className="h-3 w-3 text-violet-600 shrink-0" />}
+                {categoryFilter === 'all' && <Check className="h-3.5 w-3.5 text-cyan-400 shrink-0" />}
               </button>
 
               {categoriesList.map((cat) => {
@@ -183,152 +221,143 @@ export default function ShopPage({
                   <button type="button"
                     key={cat.id}
                     onClick={() => { setCategoryFilter(cat.slug); onSelectCategory(cat.slug); }}
-                    className={`cursor-pointer w-full text-left px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${isSelected ? 'bg-violet-50 text-violet-700 border-l-2 border-violet-600' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`cursor-pointer w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all capitalize ${
+                      isSelected 
+                        ? 'bg-indigo-500/15 text-cyan-400 border-l-4 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]' 
+                        : 'text-frost/65 hover:bg-white/5 hover:text-white'
+                    }`}
                   >
-                    <span className="capitalize">{cat.name}</span>
-                    {isSelected && <Check className="h-3 w-3 text-violet-600 shrink-0" />}
+                    <span>{cat.name}</span>
+                    {isSelected && <Check className="h-3.5 w-3.5 text-cyan-400 shrink-0" />}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="block text-[10px] uppercase font-bold text-gray-700 tracking-wider">Filter Brand</label>
+          {/* Brand select */}
+          <div className="space-y-2">
+            <label className="block text-[9px] uppercase font-bold text-frost/50 tracking-widest font-mono">Filter Brand</label>
             <select
               value={brandFilter}
               onChange={e => setBrandFilter(e.target.value)}
-              className="w-full text-xs border rounded-xl p-2 outline-none focus:border-violet-500 font-mono"
+              className="w-full text-xs bg-black/40 border border-white/10 hover:border-white/20 focus:border-cyan-500/50 rounded-xl p-2 outline-none transition-colors text-frost font-mono font-bold cursor-pointer"
             >
               {brands.map((b) => (
-                <option key={b} value={b}>{b === 'all' ? 'All Brands' : b}</option>
+                <option key={b} value={b} className="bg-[#020408] text-frost py-2">
+                  {b === 'all' ? 'All Brands' : b}
+                </option>
               ))}
             </select>
           </div>
 
+          {/* Price slider */}
           <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <label className="block text-[10px] uppercase font-bold text-gray-700 tracking-wider">Price Range</label>
-              <span className="text-[10px] font-bold font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">
+            <div className="flex justify-between items-center select-none">
+              <label className="block text-[9px] uppercase font-bold text-frost/50 tracking-widest font-mono">Price Range</label>
+              <span className="text-[10px] font-bold font-mono text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/15">
                 ₹{priceMax.toLocaleString('en-IN')} max
               </span>
             </div>
             <input
               type="range" min="0" max="150000" step="1000"
               value={priceMax} onChange={e => setPriceMax(Number(e.target.value))}
-              className="w-full cursor-pointer accent-violet-605 h-1 bg-gray-200 rounded-lg appearance-none"
+              className="w-full cursor-pointer accent-cyan-400 h-1 bg-white/10 rounded-lg appearance-none"
             />
           </div>
 
-          <div className="flex items-center gap-2.5 pt-2 border-t border-gray-100">
+          {/* Checkbox triggers */}
+          <div className="flex items-center gap-2.5 pt-3.5 border-t border-white/10">
             <input
               type="checkbox" id="instock" checked={inStockOnly}
               onChange={e => setInStockOnly(e.target.checked)}
-              className="h-4 w-4 accent-violet-605 cursor-pointer"
+              className="h-4.5 w-4.5 rounded border-white/20 bg-transparent text-indigo-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-indigo-500"
             />
-            <label htmlFor="instock" className="text-xs font-semibold text-gray-700 select-none cursor-pointer">In Stock Only</label>
+            <label htmlFor="instock" className="text-xs font-bold text-frost/85 select-none cursor-pointer hover:text-cyan-400 transition-colors">
+              In Stock Only
+            </label>
           </div>
         </aside>
 
+        {/* Results layout */}
         <div className="flex-1 space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-gray-200/80 shadow-xs">
+          
+          {/* Header metrics bar */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 glassmorphic p-4 rounded-2xl border border-white/10">
             <div>
-              <h2 className="text-sm font-bold text-gray-800">
-                Found <span className="text-violet-650 text-base">{sortedProducts.length}</span> matching products
+              <h2 className="text-sm font-bold text-white tracking-wide select-none">
+                Found <span className="text-cyan-400 text-base font-extrabold font-mono">{sortedProducts.length}</span> matching products
               </h2>
-              <p className="text-[10px] text-gray-400 font-mono mt-0.5">Multi-vendor marketplace catalog</p>
+              <p className="text-[9px] text-frost/45 font-mono uppercase tracking-widest mt-0.5">Zero Gravity Multi-Vendor Marketplace</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold text-gray-400">Sort By:</span>
+            
+            <div className="flex items-center gap-3">
+              <span className="text-[9px] uppercase font-bold text-frost/50 tracking-widest font-mono">Sort By:</span>
               <select
                 value={sortBy} onChange={e => setSortBy(e.target.value)}
-                className="text-xs border rounded-xl px-2 py-1.5 outline-none focus:border-violet-500 font-mono bg-slate-50 font-bold"
+                className="text-xs bg-black/45 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-cyan-500/50 text-frost font-mono font-bold cursor-pointer"
               >
-                <option value="featured">Featured Picks</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="rating">Top Rated</option>
+                <option value="featured" className="bg-[#020408] text-frost">Featured Picks</option>
+                <option value="price-low" className="bg-[#020408] text-frost">Price: Low to High</option>
+                <option value="price-high" className="bg-[#020408] text-frost">Price: High to Low</option>
+                <option value="rating" className="bg-[#020408] text-frost">Top Rated</option>
               </select>
             </div>
           </div>
 
+          {/* Grid display layout */}
           {loading ? (
-            <div className="text-center py-24 bg-white rounded-2xl border border-gray-150">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-700 mb-2" />
-              <p className="text-xs text-gray-400 font-mono">Loading products...</p>
+            // Shimmer Loading States (6 grid shapes)
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <ShimmerSkeleton key={i} />
+              ))}
             </div>
           ) : sortedProducts.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-2xl border border-gray-150 text-gray-400 italic text-xs font-mono space-y-3">
-              <p>No Matching Products Found</p>
-              <button type="button" onClick={clearFilters} className="cursor-pointer bg-violet-600 hover:bg-violet-750 text-white font-bold px-4 py-2 rounded-xl text-xs">
-                Clear Filters
+            // No matches panel
+            <div className="text-center py-24 glassmorphic rounded-2xl border border-white/10 text-frost/40 italic text-xs font-mono space-y-4">
+              <p>No Matching Products Found in Deep Space</p>
+              <button 
+                type="button" 
+                onClick={clearFilters} 
+                className="cursor-pointer bg-gradient-to-r from-indigo-500 to-cyan-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs active:scale-95 transition-all shadow-md select-none border border-white/10"
+              >
+                Clear All Filters
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-              {sortedProducts.map((p) => {
-                const ratings = getProductRatingDetails(p.id);
-                return (
-                  <div key={p.id} className="bg-white border border-gray-200/90 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group relative">
-                    <button type="button"
-                      onClick={() => toggleWishlist(p)}
-                      className="cursor-pointer absolute top-2.5 right-2.5 h-8 w-8 rounded-full bg-white/90 flex items-center justify-center border hover:scale-110 active:scale-95 transition-all shadow-xs z-20"
+            // Kinetic transition grid of items using AnimatePresence
+            <motion.div 
+              layout
+              className="grid grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              <AnimatePresence mode="popLayout">
+                {sortedProducts.map((p) => {
+                  const ratings = getProductRatingDetails(p.id);
+                  return (
+                    <motion.div
+                      layout
+                      key={p.id}
+                      initial={{ opacity: 0, scale: 0.92 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                      transition={{ type: 'spring', stiffness: 260, damping: 24 }}
                     >
-                      <Heart className={`h-4.5 w-4.5 ${isItemWishlisted(p.id) ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
-                    </button>
-
-                    <div className="p-4 space-y-3.5 relative">
-                      <div className="aspect-square bg-gray-50 rounded-xl relative overflow-hidden">
-                        <img
-                          src={p.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80'}
-                          alt={p.name}
-                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-350"
-                        />
-                        <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity duration-250 flex items-center justify-center z-10">
-                          <button type="button"
-                            onClick={() => handleInspectProduct(p.id)}
-                            className="bg-white hover:bg-slate-50 text-gray-800 text-xs font-bold px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
-                          >
-                            <Eye className="h-4 w-4 text-violet-600" />
-                            View Product
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5 text-xs">
-                        <div className="flex justify-between items-center text-[10px] uppercase font-mono text-gray-400">
-                          <span>{p.category}</span>
-                          <span>{p.brand}</span>
-                        </div>
-                        <h4 onClick={() => handleInspectProduct(p.id)} className="font-bold text-gray-800 hover:text-indigo-650 text-sm truncate leading-tight mt-1 cursor-pointer">
-                          {p.name}
-                        </h4>
-                        <div className="flex gap-1 items-center mt-2.5">
-                          <div className="flex text-amber-400 gap-0.5">
-                            {Array.from({ length: Math.floor(ratings.avg) }).map((_, i) => (
-                              <Star key={i} className="h-3 w-3 fill-amber-450 text-amber-450" />
-                            ))}
-                          </div>
-                          <span className="text-[10px] font-bold text-gray-700 font-mono">({ratings.count})</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-4 border-t border-gray-150 bg-gray-50/50 flex justify-between items-center text-xs">
-                      <span className="font-black text-gray-855 font-mono text-sm">₹{p.price.toLocaleString('en-IN')}</span>
-                      <button type="button"
-                        onClick={() => addToCart(p.id, 1)}
-                        className="cursor-pointer bg-violet-605 hover:bg-violet-750 text-white font-bold py-1.5 px-3 rounded-lg border outline-none shadow-xs text-[10px] flex items-center gap-1"
-                      >
-                        <ShoppingCart className="h-3.5 w-3.5" />
-                        Add to Cart
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                      <ProductCard
+                        p={p}
+                        ratings={ratings}
+                        isWishlisted={isItemWishlisted(p.id)}
+                        onToggleWishlist={() => toggleWishlist(p)}
+                        onSelect={() => handleInspectProduct(p.id)}
+                        onAddToCart={() => addToCart(p.id, 1)}
+                      />
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
           )}
+
         </div>
       </div>
     </div>

@@ -8,8 +8,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import QRCode from 'qrcode';
 import { Groq } from 'groq-sdk';
+import * as dotenv from 'dotenv';
 
-import * as admin from 'firebase-admin';
+dotenv.config();
+
+import admin from 'firebase-admin';
 
 // Initialize Firebase Admin (requires GOOGLE_APPLICATION_CREDENTIALS or proper config)
 try {
@@ -2640,8 +2643,11 @@ app.post('/api/gemini/aura', async (req, res) => {
   Keep your answers short, crisp, highly visual, and formatted in clean user-friendly Markdown. Include a subtle touch of friendly conversational emojis!`;
 
   try {
+    const geminiEnv = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "";
+    const geminiKeys = geminiEnv.split(',').map(k => k.trim()).filter(k => k && k !== 'MY_GEMINI_API_KEY');
+
     // Check for developer API key
-    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'MY_GEMINI_API_KEY') {
+    if (geminiKeys.length === 0) {
       // In sandbox development without injected keys, return beautiful smart simulated response!
       console.log('Using simulated smart concierges responses (no valid Gemini keys configured)...');
       
@@ -2682,9 +2688,12 @@ It pairs beautifully with our single-estate **Organic Assam Tea** to create the 
       return res.json({ response: simResponse });
     }
 
+    // Pick a key from the pool to load-balance / avoid rate limits
+    const selectedKey = geminiKeys[Math.floor(Math.random() * geminiKeys.length)];
+
     // Actual calling of Gemini 3.5 Flash using new @google/genai SDK
     const ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
+      apiKey: selectedKey,
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build'

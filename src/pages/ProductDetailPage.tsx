@@ -3,9 +3,10 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { 
-  ArrowLeft, ShoppingBag, MessageSquare, Star, Shield, RefreshCw, Truck, 
-  Loader2, Heart, X, Plus, Minus, ArrowRight, ShoppingCart, CheckCircle 
+  ArrowLeft, ShoppingBag, Star, Shield, RefreshCw, Truck, 
+  Loader2, Heart, X, Plus, Minus, ArrowRight, ShoppingCart
 } from 'lucide-react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 
 interface ProductDetailPageProps {
   productId: string;
@@ -33,6 +34,15 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
   const [justAdded, setJustAdded] = useState(false);
 
   const drawerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll hooks for Parallax effect on product image
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
+  // Transform y positions from -20px to 20px
+  const imageY = useTransform(scrollYProgress, [0, 1], [-20, 20]);
 
   useEffect(() => {
     if (productId) {
@@ -143,19 +153,19 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-24 text-center">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto text-violet-600 mb-2" />
-        <p className="text-xs text-gray-500 font-mono">Loading product details...</p>
+      <div className="max-w-7xl mx-auto px-4 py-32 text-center select-none">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-cyan-400 mb-3" />
+        <p className="text-xs text-frost/50 font-mono uppercase tracking-widest">Synthesizing Product Details...</p>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-24 text-center">
-        <p className="text-sm text-gray-500 font-mono italic">Product not found.</p>
-        <button type="button" onClick={() => onNavigateTo('shop')} className="mt-4 bg-violet-600 text-white font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">
-          Back to Shop
+      <div className="max-w-7xl mx-auto px-4 py-32 text-center select-none">
+        <p className="text-sm text-frost/50 font-mono italic">Product coordinates lost in void space.</p>
+        <button type="button" onClick={() => onNavigateTo('shop')} className="mt-6 bg-indigo-500 text-white font-bold px-5 py-3 rounded-xl text-xs cursor-pointer shadow-lg">
+          Back to Shop Catalog
         </button>
       </div>
     );
@@ -177,81 +187,88 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div ref={containerRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 select-none">
       
       {/* Cart Drawer Overlay */}
-      {cartDrawerOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[50]" />
-      )}
+      <AnimatePresence>
+        {cartDrawerOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[50]" 
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Cart Drawer Panel */}
+      {/* Cart Drawer Panel (frosted glass variant) */}
       <div
         ref={drawerRef}
-        className={`fixed top-0 right-0 h-full w-full sm:w-[420px] bg-white shadow-2xl z-[51] flex flex-col transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 h-full w-full sm:w-[420px] bg-[#020408]/95 backdrop-blur-2xl border-l border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.9)] z-[51] flex flex-col transition-transform duration-300 ease-out ${
           cartDrawerOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Drawer Header */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-150">
-          <div className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-violet-600" />
-            <h3 className="font-bold text-gray-900 text-base">Shopping Cart</h3>
-            <span className="bg-violet-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{cartCount}</span>
+        <div className="flex items-center justify-between p-5 border-b border-white/10">
+          <div className="flex items-center gap-2.5">
+            <ShoppingBag className="h-5 w-5 text-cyan-400" />
+            <h3 className="font-bold font-display text-white text-base">Levitating Cart</h3>
+            <span className="bg-indigo-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]">{cartCount}</span>
           </div>
           <button type="button"
             onClick={() => setCartDrawerOpen(false)}
-            className="cursor-pointer h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+            className="cursor-pointer h-8 w-8 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors border border-white/10"
           >
-            <X className="h-4 w-4 text-gray-500" />
+            <X className="h-4 w-4 text-frost/60 hover:text-white" />
           </button>
         </div>
 
         {/* Just Added Banner */}
         {justAdded && (
-          <div className="mx-4 mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-700 text-xs font-bold">
-            <CheckCircle className="h-4 w-4" />
-            {quantity} item(s) added to cart!
+          <div className="mx-4 mt-3 p-3 bg-cyan-500/10 border border-cyan-400/20 rounded-xl flex items-center gap-2 text-cyan-300 text-xs font-mono font-bold">
+            <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
+            {quantity} Item(s) floated to the cart!
           </div>
         )}
 
         {/* Cart Items */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {cart.length === 0 ? (
-            <div className="text-center py-16 space-y-3">
-              <ShoppingCart className="h-10 w-10 text-gray-200 mx-auto" />
-              <p className="text-sm text-gray-400 font-medium">Your cart is empty</p>
+            <div className="text-center py-20 space-y-4">
+              <ShoppingBag className="h-12 w-12 text-frost/20 mx-auto" />
+              <p className="text-sm text-frost/45 font-medium italic">Your space-cart is empty</p>
               <button type="button" onClick={() => { setCartDrawerOpen(false); onNavigateTo('shop'); }}
-                className="cursor-pointer text-xs font-bold text-violet-600 hover:underline">
-                Continue Shopping
+                className="cursor-pointer text-xs font-bold text-cyan-400 hover:underline uppercase tracking-wider">
+                Browse Shop Catalog
               </button>
             </div>
           ) : (
             cart.map(item => (
-              <div key={item.id} className="flex gap-3 p-3 bg-gray-50/60 rounded-2xl border border-gray-150">
-                <img src={item.imageUrl} alt={item.name} className="h-16 w-16 rounded-xl object-cover border bg-white shrink-0" />
+              <div key={item.id} className="flex gap-3 p-3.5 glassmorphic rounded-2xl border border-white/10">
+                <img src={item.imageUrl} alt={item.name} className="h-16 w-16 rounded-xl object-cover border border-white/5 bg-black shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-xs text-gray-800 truncate">{item.name}</h4>
-                  <p className="text-[10px] text-gray-400 font-mono mt-0.5">{item.brand}</p>
-                  <p className="text-sm font-black text-violet-700 mt-1">₹{item.price.toLocaleString('en-IN')}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center bg-white rounded-lg border overflow-hidden">
+                  <h4 className="font-bold text-xs text-white truncate">{item.name}</h4>
+                  <p className="text-[9px] text-frost/45 font-mono mt-0.5">{item.brand}</p>
+                  <p className="text-sm font-extrabold text-cyan-400 font-mono mt-1">₹{item.price.toLocaleString('en-IN')}</p>
+                  <div className="flex items-center justify-between mt-2.5">
+                    <div className="flex items-center bg-black/40 rounded-lg border border-white/10 overflow-hidden">
                       <button type="button"
                         onClick={() => updateCartQuantity(item.id, Math.max(1, item.quantity - 1))}
-                        className="cursor-pointer w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-600 font-bold transition-colors"
+                        className="cursor-pointer w-7 h-7 flex items-center justify-center hover:bg-white/5 text-frost/70 font-bold transition-colors"
                       >
                         <Minus className="h-3 w-3" />
                       </button>
-                      <span className="w-8 text-center text-xs font-bold">{item.quantity}</span>
+                      <span className="w-8 text-center text-xs font-bold font-mono text-white">{item.quantity}</span>
                       <button type="button"
                         onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                        className="cursor-pointer w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-600 font-bold transition-colors"
+                        className="cursor-pointer w-7 h-7 flex items-center justify-center hover:bg-white/5 text-frost/70 font-bold transition-colors"
                       >
                         <Plus className="h-3 w-3" />
                       </button>
                     </div>
                     <button type="button"
                       onClick={() => removeFromCart(item.id)}
-                      className="cursor-pointer text-gray-300 hover:text-red-400 transition-colors"
+                      className="cursor-pointer text-frost/40 hover:text-red-400 transition-colors p-1"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -264,65 +281,73 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
 
         {/* Drawer Footer */}
         {cart.length > 0 && (
-          <div className="p-4 border-t border-gray-150 space-y-3 bg-white z-10">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-black text-gray-900">Subtotal ({cartCount} items)</span>
-              <span className="text-xl font-black text-violet-700">₹{cartTotal.toLocaleString('en-IN')}</span>
+          <div className="p-4 border-t border-white/10 space-y-3 bg-[#020408] z-10">
+            <div className="flex justify-between items-center px-1">
+              <span className="text-sm font-bold text-frost/70">Subtotal ({cartCount} items)</span>
+              <span className="text-xl font-extrabold text-cyan-450 font-mono">₹{cartTotal.toLocaleString('en-IN')}</span>
             </div>
-            <p className="text-[10px] text-gray-400 text-center">Shipping & taxes calculated at checkout</p>
+            <p className="text-[10px] text-frost/40 text-center font-mono">Quantum shipping computed at checkout</p>
             <button type="button"
               onClick={() => { setCartDrawerOpen(false); onNavigateTo('cart'); }}
-              className="cursor-pointer w-full bg-violet-600 hover:bg-violet-700 text-white font-black py-3.5 rounded-xl flex items-center justify-center gap-2 text-sm shadow-md transition-all"
+              className="cursor-pointer w-full bg-linear-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest font-display shadow-[0_0_20px_rgba(99,102,241,0.3)]"
             >
               Proceed to Checkout
               <ArrowRight className="h-4 w-4" />
             </button>
             <button type="button"
               onClick={() => { setCartDrawerOpen(false); }}
-              className="cursor-pointer w-full text-center text-xs font-bold text-gray-500 hover:text-gray-700 py-2"
+              className="cursor-pointer w-full text-center text-xs font-bold text-frost/50 hover:text-white transition-colors py-2 uppercase tracking-wider"
             >
-              Continue Shopping
+              Continue Floating
             </button>
           </div>
         )}
       </div>
 
-      {/* Back button */}
+      {/* Back button link */}
       <div>
         <button type="button"
           onClick={() => onNavigateTo('shop')}
-          className="cursor-pointer font-bold text-xs text-gray-600 hover:text-violet-600 flex items-center gap-1.5 transition-colors bg-white px-4 py-2 rounded-xl border border-gray-150 shadow-sm"
+          className="cursor-pointer font-bold text-xs text-frost/80 hover:text-cyan-400 flex items-center gap-1.5 transition-colors bg-white/5 px-4 py-2 rounded-xl border border-white/10 hover:border-cyan-500/30"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Catalog
         </button>
       </div>
 
-      {/* Product Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-10 bg-white p-6 sm:p-8 rounded-3xl border border-gray-200/80 shadow-xs">
+      {/* Product Layout grid */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
         
-        {/* Left: Image Gallery */}
+        {/* Left aspect: Image Gallery with scroll transform parallax */}
         <div className="md:col-span-6 space-y-4">
-          <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border border-gray-150 relative">
-            {isVideo(activeImage) ? (
-              <video src={activeImage} controls className="h-full w-full object-cover transition-all" autoPlay />
-            ) : (
-              <img src={activeImage} alt={product.name} className="h-full w-full object-cover transition-all" />
-            )}
+          <div className="aspect-square bg-black/40 rounded-3xl overflow-hidden border border-white/10 relative shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+            
+            {/* Parallax wrapper around the primary media display */}
+            <motion.div 
+              style={{ y: imageY }}
+              className="w-full h-full"
+            >
+              {isVideo(activeImage) ? (
+                <video src={activeImage} controls className="h-full w-full object-cover" autoPlay muted loop />
+              ) : (
+                <img src={activeImage} alt={product.name} className="h-full w-full object-cover" />
+              )}
+            </motion.div>
+
             {product.stock > 0 ? (
-              <span className="absolute top-4 left-4 text-[10px] font-bold uppercase bg-emerald-500 text-white px-3 py-1 rounded-full shadow-sm z-10">
+              <span className="absolute top-4 left-4 text-[9px] font-mono tracking-widest uppercase bg-cyan-500/20 text-cyan-400 border border-cyan-400/30 px-3 py-1.5 rounded-full shadow-[0_0_15px_rgba(6,182,212,0.25)] z-10">
                 In Stock
               </span>
             ) : (
-              <span className="absolute top-4 left-4 text-[10px] font-bold uppercase bg-rose-500 text-white px-3 py-1 rounded-full shadow-sm z-10">
+              <span className="absolute top-4 left-4 text-[9px] font-mono tracking-widest uppercase bg-rose-500/20 text-rose-450 border border-rose-400/30 px-3 py-1.5 rounded-full shadow-[0_0_15px_rgba(244,63,94,0.25)] z-10 animate-pulse">
                 Sold Out
               </span>
             )}
             <button type="button"
               onClick={() => toggleWishlist(product)}
-              className="absolute top-4 right-4 h-9 w-9 rounded-full bg-white/95 shadow-md border hover:scale-105 transition-all text-gray-400 flex items-center justify-center z-10 cursor-pointer"
+              className="absolute top-4 right-4 h-9 w-9 rounded-full bg-black/45 hover:border-cyan-400 transition-all text-frost/70 flex items-center justify-center z-10 cursor-pointer border border-white/10 shadow-md"
             >
-              <Heart className={`h-5 w-5 ${isWishlisted() ? 'fill-red-500 text-red-500' : ''}`} />
+              <Heart className={`h-4.5 w-4.5 ${isWishlisted() ? 'fill-red-500 text-red-500' : 'text-frost/60'}`} />
             </button>
           </div>
 
@@ -333,17 +358,21 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
                 <button type="button"
                   key={i}
                   onClick={() => setActiveImage(mediaUrl)}
-                  className={`cursor-pointer rounded-xl overflow-hidden border-2 aspect-square bg-gray-50 transition-all relative ${activeImage === mediaUrl ? 'border-violet-600 scale-[1.02]' : 'border-gray-200 hover:border-violet-400'}`}
+                  className={`cursor-pointer rounded-xl overflow-hidden border aspect-square bg-black/20 transition-all relative ${
+                    activeImage === mediaUrl 
+                      ? 'border-cyan-400 scale-[1.03] shadow-[0_0_12px_rgba(6,182,212,0.3)]' 
+                      : 'border-white/10 hover:border-white/20'
+                  }`}
                 >
                   {isVid ? (
-                    <div className="h-full w-full relative flex items-center justify-center bg-slate-900">
-                      <video src={mediaUrl} className="h-full w-full object-cover opacity-60" />
+                    <div className="h-full w-full relative flex items-center justify-center bg-slate-950">
+                      <video src={mediaUrl} className="h-full w-full object-cover opacity-50" />
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-white text-[9px] bg-black/60 px-1.5 py-0.5 rounded font-mono font-bold">▶ Video</span>
+                        <span className="text-white text-[8px] bg-black/70 px-1.5 py-0.5 rounded font-mono font-bold uppercase tracking-wider">▶ Vid</span>
                       </div>
                     </div>
                   ) : (
-                    <img src={mediaUrl} alt="Detail" className="h-full w-full object-cover" />
+                    <img src={mediaUrl} alt="Thumbnail" className="h-full w-full object-cover" />
                   )}
                 </button>
               );
@@ -351,130 +380,148 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
           </div>
         </div>
 
-        {/* Right: Product Details */}
-        <div className="md:col-span-6 space-y-6">
-          <div className="space-y-2">
-            <div className="flex gap-2.5 items-center text-xs font-mono">
-              <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">
-                {product.category}
-              </span>
-              <span className="text-gray-400">|</span>
-              <span className="text-gray-500 font-bold uppercase">Brand: {product.brand}</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">{product.name}</h1>
-            <div className="flex items-center gap-2">
-              <div className="flex text-amber-400 gap-0.5">
-                {[1,2,3,4,5].map(s => (
-                  <Star key={s} className={`h-4 w-4 ${s <= Math.floor(avg) ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
-                ))}
+        {/* Right aspect: Sticky Purchase Panel with Glass Card styling */}
+        <div className="md:col-span-6">
+          <div className="glassmorphic rounded-3xl p-6 sm:p-8 space-y-6 md:sticky md:top-24 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.7)]">
+            
+            <div className="space-y-3.5">
+              <div className="flex gap-2.5 items-center text-[10px] font-mono font-bold">
+                <span className="bg-indigo-500/10 border border-indigo-400/20 text-cyan-300 px-2.5 py-1 rounded-md uppercase tracking-wider">
+                  {product.category}
+                </span>
+                <span className="text-white/20">|</span>
+                <span className="text-frost/45 uppercase tracking-widest">Brand: {product.brand}</span>
               </div>
-              <span className="text-xs font-bold text-gray-700 font-mono">({count} ratings)</span>
-              <span className="text-gray-300">•</span>
-              <span className="text-xs text-gray-400 font-semibold">{product.vendorStoreName || 'OmniBazaar Store'}</span>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">{product.name}</h1>
+              <div className="flex items-center gap-2 select-none">
+                <div className="flex text-amber-400 gap-0.5">
+                  {[1,2,3,4,5].map(s => (
+                    <Star key={s} className={`h-4 w-4 ${s <= Math.floor(avg) ? 'fill-amber-400 text-amber-400' : 'text-white/10'}`} />
+                  ))}
+                </div>
+                <span className="text-xs font-bold text-frost/65 font-mono">({count} reviews)</span>
+                <span className="text-white/20">•</span>
+                <span className="text-xs text-frost/50 font-bold uppercase tracking-wider">{product.vendorStoreName || 'OmniBazaar Store'}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Price */}
-          <div className="p-4 bg-slate-50 border border-gray-150 rounded-2xl">
-            <div className="flex items-baseline gap-2">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Price:</span>
-              <span className="text-3xl font-black text-gray-900 font-mono">₹{product.price.toLocaleString('en-IN')}</span>
+            {/* Price indicator */}
+            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+              <div className="flex items-baseline gap-2">
+                <span className="text-[10px] text-frost/40 font-bold uppercase tracking-wider font-mono">Price:</span>
+                <span className="text-3xl font-extrabold text-cyan-400 font-mono tracking-wider">₹{product.price.toLocaleString('en-IN')}</span>
+              </div>
+              <p className="text-[10px] text-cyan-300 font-mono mt-1">✓ Secure quantum escrow enabled. Free space delivery above ₹1,00,000.</p>
             </div>
-            <p className="text-[10px] text-emerald-600 font-bold mt-1">✓ Inclusive of all taxes. Free delivery on orders above ₹1,00,000.</p>
-          </div>
 
-          {/* Add to Cart Controls */}
-          <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch">
-              {/* Quantity */}
-              <div className="flex border border-gray-200 rounded-xl items-center overflow-hidden w-fit bg-white">
-                <button
+            {/* Add to Cart purchase morphing CTA controls */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch">
+                {/* Quantity adjustments */}
+                <div className="flex border border-white/10 bg-black/40 rounded-xl items-center overflow-hidden w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    className="cursor-pointer px-4 py-2.5 hover:bg-white/5 text-frost/70 font-bold transition-colors"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="px-5 py-2 font-bold font-mono text-sm w-12 text-center text-white">{quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(q => q + 1)}
+                    className="cursor-pointer px-4 py-2.5 hover:bg-white/5 text-frost/70 font-bold transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Add to Cart morphing CTA */}
+                <motion.button 
                   type="button"
-                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                  className="cursor-pointer px-3.5 py-2.5 hover:bg-gray-50 text-gray-600 font-bold transition-colors"
+                  onClick={handleAddToCartClick}
+                  disabled={product.stock <= 0}
+                  animate={justAdded ? { scale: [1, 1.05, 1], boxShadow: "0 0 25px rgba(6,182,212,0.8)" } : {}}
+                  transition={{ repeat: justAdded ? 1 : 0, duration: 1 }}
+                  className={`cursor-pointer flex-1 disabled:bg-white/5 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2.5 shadow-lg transition-all active:scale-95 text-xs uppercase tracking-widest font-display select-none ${
+                    justAdded 
+                      ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white' 
+                      : 'bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white border border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
+                  }`}
                 >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="px-5 py-2 font-bold font-mono text-sm w-12 text-center text-gray-800">{quantity}</span>
-                <button
-                  type="button"
-                  onClick={() => setQuantity(q => q + 1)}
-                  className="cursor-pointer px-3.5 py-2.5 hover:bg-gray-50 text-gray-600 font-bold transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
+                  <ShoppingCart className="h-4.5 w-4.5" />
+                  {justAdded ? '✓ Floating to Cart' : 'Float to Cart'}
+                </motion.button>
               </div>
 
-              {/* Add to Cart Button */}
-              <button type="button"
-                onClick={handleAddToCartClick}
-                disabled={product.stock <= 0}
-                className="cursor-pointer flex-1 bg-violet-600 disabled:bg-gray-200 hover:bg-violet-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
-              >
-                <ShoppingCart className="h-4.5 w-4.5" />
-                Add to Cart
-              </button>
+              {cartCount > 0 && (
+                <button type="button"
+                  onClick={() => setCartDrawerOpen(true)}
+                  className="cursor-pointer w-full border border-indigo-400/30 bg-indigo-500/10 text-cyan-300 hover:bg-indigo-500/20 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest font-display transition-all"
+                >
+                  <ShoppingBag className="h-4.5 w-4.5" />
+                  View Cart ({cartCount} items)
+                </button>
+              )}
             </div>
 
-            {/* Open Cart Drawer Button (if items in cart) */}
-            {cartCount > 0 && (
-              <button type="button"
-                onClick={() => setCartDrawerOpen(true)}
-                className="cursor-pointer w-full border border-violet-300 text-violet-700 hover:bg-violet-50 font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 text-sm transition-all"
-              >
-                <ShoppingBag className="h-4 w-4" />
-                View Cart ({cartCount} items)
-              </button>
-            )}
-          </div>
+            {/* space trust metrics */}
+            <div className="grid grid-cols-3 gap-2.5 pt-4.5 border-t border-white/5 select-none">
+              {[
+                { icon: Truck, label: 'Fast Parsec delivery' },
+                { icon: RefreshCw, label: '30-Day Return' },
+                { icon: Shield, label: 'Secure Pay' },
+              ].map(({ icon: Icon, label }) => (
+                <div key={label} className="flex flex-col items-center text-center p-3 bg-white/[0.01] border border-white/5 rounded-xl text-[9px] text-frost/45 font-mono uppercase tracking-wider font-semibold">
+                  <Icon className="h-4.5 w-4.5 text-cyan-400 mb-1.5" />
+                  {label}
+                </div>
+              ))}
+            </div>
 
-          {/* Benefits */}
-          <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100">
-            {[
-              { icon: Truck, label: 'Fast Delivery' },
-              { icon: RefreshCw, label: '30-Day Return' },
-              { icon: Shield, label: 'Secure Pay' },
-            ].map(({ icon: Icon, label }) => (
-              <div key={label} className="flex flex-col items-center text-center p-2.5 bg-slate-50 border rounded-xl text-[10px] text-gray-500">
-                <Icon className="h-4.5 w-4.5 text-violet-600 mb-1" />
-                {label}
-              </div>
-            ))}
           </div>
         </div>
       </div>
 
-      {/* Tabs: Description & Reviews */}
-      <div className="bg-white border border-gray-200/80 p-6 sm:p-8 rounded-3xl shadow-xs space-y-6">
-        <div className="flex border-b border-gray-200 text-sm font-semibold">
+      {/* Tabs segment: Description & reviews */}
+      <div className="glassmorphic border border-white/10 p-6 sm:p-8 rounded-3xl shadow-xl space-y-6">
+        <div className="flex border-b border-white/10 text-xs font-bold font-mono tracking-widest uppercase">
           <button type="button"
             onClick={() => setActiveTab('desc')}
-            className={`cursor-pointer pb-3 px-4 border-b-2 transition-all ${activeTab === 'desc' ? 'border-violet-600 text-violet-700 font-bold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`cursor-pointer pb-3.5 px-4 border-b-2 transition-all ${
+              activeTab === 'desc' 
+                ? 'border-cyan-400 text-cyan-400 font-extrabold' 
+                : 'border-transparent text-frost/45 hover:text-frost'
+            }`}
           >
             Description & Specs
           </button>
           <button type="button"
             onClick={() => setActiveTab('reviews')}
-            className={`cursor-pointer pb-3 px-4 border-b-2 transition-all ${activeTab === 'reviews' ? 'border-violet-600 text-violet-700 font-bold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`cursor-pointer pb-3.5 px-4 border-b-2 transition-all ${
+              activeTab === 'reviews' 
+                ? 'border-cyan-400 text-cyan-400 font-extrabold' 
+                : 'border-transparent text-frost/45 hover:text-frost'
+            }`}
           >
             Reviews ({reviews.length})
           </button>
         </div>
 
         {activeTab === 'desc' ? (
-          <div className="space-y-5 text-sm leading-relaxed text-gray-600">
-            <p className="font-medium text-gray-800">{product.description}</p>
-            <div className="grid sm:grid-cols-2 gap-4 max-w-xl font-mono text-xs pt-2">
+          <div className="space-y-6 text-sm leading-relaxed text-frost/70">
+            <p className="font-medium text-frost/90 leading-relaxed text-sm sm:text-base">{product.description}</p>
+            <div className="grid sm:grid-cols-2 gap-4 max-w-2xl font-mono text-xs pt-4">
               {[
                 { label: 'Brand', value: product.brand },
                 { label: 'Category', value: product.category },
-                { label: 'Stock Available', value: `${product.stock} units` },
-                { label: 'Rating', value: `${avg} / 5.0 ★` },
-                { label: 'Vendor', value: product.vendorStoreName || 'OmniBazaar Store' },
+                { label: 'Quantum Stock Available', value: `${product.stock} units` },
+                { label: 'Cosmic Rating', value: `${avg} / 5.0 ★` },
+                { label: 'Exhibiting Vendor', value: product.vendorStoreName || 'OmniBazaar Store' },
               ].map(row => (
-                <div key={row.label} className="flex justify-between border-b pb-1.5">
-                  <span className="text-gray-400">{row.label.toUpperCase()}:</span>
-                  <span className="font-bold text-gray-800">{row.value}</span>
+                <div key={row.label} className="flex justify-between border-b border-white/5 pb-2">
+                  <span className="text-frost/40 uppercase tracking-widest">{row.label}:</span>
+                  <span className="font-bold text-white">{row.value}</span>
                 </div>
               ))}
             </div>
@@ -483,58 +530,63 @@ export default function ProductDetailPage({ productId, onNavigateTo }: ProductDe
           <div className="space-y-6">
             <div className="space-y-4">
               {reviews.length === 0 ? (
-                <p className="text-xs text-gray-400 italic">No reviews yet. Be the first to leave a review!</p>
+                <p className="text-xs text-frost/40 italic font-mono">No reviews yet. Be the first explorer to comment!</p>
               ) : (
                 reviews.map(rev => (
-                  <div key={rev.id} className="p-4 bg-slate-50 border border-gray-150 rounded-2xl space-y-2 text-xs">
+                  <div key={rev.id} className="p-4.5 bg-white/[0.01] border border-white/5 rounded-2xl space-y-2 text-xs">
                     <div className="flex justify-between items-center">
                       <div>
-                        <span className="font-bold text-indigo-700">{rev.userName || rev.reviewerName || 'Customer'}</span>
-                        <span className="text-gray-400 text-[10px] ml-2">{new Date(rev.createdAt).toLocaleDateString()}</span>
+                        <span className="font-bold text-cyan-400">{rev.userName || rev.reviewerName || 'Customer'}</span>
+                        <span className="text-frost/40 text-[9px] font-mono ml-2.5">{new Date(rev.createdAt).toLocaleDateString()}</span>
                       </div>
                       <div className="flex text-amber-400 gap-0.5">
                         {Array.from({ length: rev.rating }).map((_, i) => (
-                          <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
+                          <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                         ))}
                       </div>
                     </div>
-                    <p className="text-gray-600 leading-relaxed">{rev.reviewText}</p>
+                    <p className="text-frost/80 leading-relaxed font-medium">"{rev.reviewText}"</p>
                   </div>
                 ))
               )}
             </div>
 
-            <form onSubmit={handleAddReview} className="p-5 border border-gray-200 bg-gray-50/50 rounded-2xl max-w-2xl space-y-4">
-              <h5 className="font-bold text-gray-800 text-sm">Write a Review</h5>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-gray-600">Rating:</span>
-                <div className="flex gap-1">
+            {/* Submit reviews form */}
+            <form onSubmit={handleAddReview} className="p-6 border border-white/10 bg-black/40 rounded-2xl max-w-xl space-y-4.5">
+              <h5 className="font-bold font-display text-white text-sm">Submit Orbit Assessment</h5>
+              
+              <div className="flex items-center gap-3 select-none">
+                <span className="text-xs font-bold font-mono text-frost/50 uppercase tracking-wider">Rating:</span>
+                <div className="flex gap-1.5">
                   {[1,2,3,4,5].map(s => (
-                    <button key={s} type="button" onClick={() => setNewRating(s)} className="cursor-pointer">
-                      <Star className={`h-5 w-5 ${s <= newRating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
+                    <button key={s} type="button" onClick={() => setNewRating(s)} className="cursor-pointer hover:scale-110 active:scale-95 transition-transform">
+                      <Star className={`h-5 w-5 ${s <= newRating ? 'fill-amber-400 text-amber-400' : 'text-white/10'}`} />
                     </button>
                   ))}
                 </div>
               </div>
+              
               <textarea
                 rows={3}
                 required
                 value={newReviewText}
                 onChange={e => setNewReviewText(e.target.value)}
-                placeholder="Share your experience with this product..."
-                className="w-full bg-white px-3.5 py-2 rounded-xl border outline-none focus:border-violet-500 text-xs"
+                placeholder="Share your experience in orbit with this product..."
+                className="w-full bg-black/30 border border-white/10 focus:border-cyan-500/50 rounded-xl px-4 py-3 outline-none text-frost placeholder-frost/30 text-xs font-semibold"
               />
+              
               <button
                 type="submit"
                 disabled={submittingReview}
-                className="cursor-pointer bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2"
+                className="cursor-pointer bg-white text-black hover:bg-frost font-bold px-5 py-2.5 rounded-xl text-[10px] uppercase tracking-wider font-mono flex items-center gap-2 active:scale-95 transition-all shadow-md"
               >
-                {submittingReview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Submit Review'}
+                {submittingReview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Log assessment'}
               </button>
             </form>
           </div>
         )}
       </div>
+
     </div>
   );
 }
