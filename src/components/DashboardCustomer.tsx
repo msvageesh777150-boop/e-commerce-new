@@ -367,7 +367,7 @@ export default function DashboardCustomer({ onNavigateTo }: DashboardCustomerPro
     <div id="buyer-panel" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
       
       {/* Customer profile header banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-violet-600 to-indigo-805 text-white p-6 rounded-2xl shadow-xl mb-6 border border-white/10">
+      <div className="always-dark flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-violet-600 to-indigo-805 text-white p-6 rounded-2xl shadow-xl mb-6 border border-white/10">
         <div>
           <span className="text-[10px] uppercase font-mono tracking-widest font-semibold bg-white/20 text-white py-1 px-3 rounded-full border border-white/25">
             Customer Dashboard Suite
@@ -480,7 +480,7 @@ export default function DashboardCustomer({ onNavigateTo }: DashboardCustomerPro
                 </div>
               </div>
 
-              <div className={`relative overflow-hidden rounded-[2rem] border border-violet-100 shadow-xl bg-gradient-to-br from-violet-950 via-slate-950 to-slate-900 text-white mt-6 ${overviewTheater ? 'lg:px-10 lg:py-10' : 'p-6'}`}>
+              <div className={`always-dark relative overflow-hidden rounded-[2rem] border border-violet-100 shadow-xl bg-gradient-to-br from-violet-950 via-slate-950 to-slate-900 text-white mt-6 ${overviewTheater ? 'lg:px-10 lg:py-10' : 'p-6'}`}>
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(129,140,248,0.35),_transparent_32%),radial-gradient(circle_at_bottom_left,_rgba(139,92,246,0.25),_transparent_30%)] blur-3xl pointer-events-none" />
                 <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr] items-center">
                   <div className="space-y-4">

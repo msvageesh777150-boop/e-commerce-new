@@ -411,21 +411,21 @@
 
 /* Global Visibility & High Contrast Overrides for Light Mode */
 @layer base {
-  /* Hardcoded light texts are automatically turned into dark legible colors inside white cards/backgrounds */
-  body:not(.dark) .text-white {
+  /* Hardcoded light texts are automatically turned into dark legible colors inside white cards/backgrounds (unless inside always-dark elements) */
+  body:not(.dark) .text-white:not(.always-dark *):not(.always-dark) {
     color: var(--foreground) !important;
   }
-  body:not(.dark) .text-frost\/60,
-  body:not(.dark) .text-frost\/70,
-  body:not(.dark) .text-frost\/80,
-  body:not(.dark) .text-frost\/45,
-  body:not(.dark) .text-frost\/30,
-  body:not(.dark) .text-frost {
+  body:not(.dark) .text-frost\/60:not(.always-dark *):not(.always-dark),
+  body:not(.dark) .text-frost\/70:not(.always-dark *):not(.always-dark),
+  body:not(.dark) .text-frost\/80:not(.always-dark *):not(.always-dark),
+  body:not(.dark) .text-frost\/45:not(.always-dark *):not(.always-dark),
+  body:not(.dark) .text-frost\/30:not(.always-dark *):not(.always-dark),
+  body:not(.dark) .text-frost:not(.always-dark *):not(.always-dark) {
     color: var(--frost) !important;
   }
-  body:not(.dark) .text-neutral-300,
-  body:not(.dark) .text-neutral-400,
-  body:not(.dark) .text-neutral-500 {
+  body:not(.dark) .text-neutral-300:not(.always-dark *):not(.always-dark),
+  body:not(.dark) .text-neutral-400:not(.always-dark *):not(.always-dark),
+  body:not(.dark) .text-neutral-500:not(.always-dark *):not(.always-dark) {
     color: var(--foreground) !important;
   }
 
