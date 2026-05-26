@@ -236,34 +236,32 @@ export default function Header({
 
   return (
     <motion.header
-      initial={{ y: -40, opacity: 0 }}
+      initial={{ y: -45, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       className="fixed inset-x-0 top-0 z-[100] px-4 pt-4 md:px-8 md:pt-6"
     >
       <nav
-        className={`mx-auto flex max-w-7xl items-center justify-between rounded-full px-5 py-3 transition-all duration-500 md:px-7 ${
-          scrolled ? 'glass-strong shadow-elevated' : 'glass'
-        }`}
+        className={`mx-auto flex max-w-6xl items-center justify-between rounded-full px-5 py-2.5 transition-all duration-500 md:px-7 glass-nav [box-shadow:var(--shadow-soft)] border border-border`}
       >
-        {/* Brand Logo with Glow */}
+        {/* Brand Logo with Ochre Gold Blur */}
         <div 
           onClick={() => onNavigateTo('home')} 
           className="flex items-center gap-2 cursor-pointer select-none"
         >
-          <div className="relative h-7 w-7">
-            <div className="absolute inset-0 rounded-full bg-aurora blur-md opacity-70" />
-            <div className="relative h-7 w-7 rounded-full bg-aurora flex items-center justify-center text-white">
-              <Store className="h-4.5 w-4.5" />
+          <div className="relative h-6 w-6">
+            <div className="absolute inset-0 rounded-full bg-accent/40 blur-xs" />
+            <div className="relative h-6 w-6 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-display font-bold text-xs">
+              N
             </div>
           </div>
-          <span className="font-display text-lg font-semibold tracking-tight text-white">
-            OmniBazaar
+          <span className="font-display text-[17px] font-bold tracking-tight text-foreground">
+            NOVA
           </span>
         </div>
 
-        {/* Navigation Links — Satisfying capsule layout */}
-        <ul className="hidden items-center gap-1.5 md:flex">
+        {/* Navigation Links — Minimalist warm Editorial capsules */}
+        <ul className="hidden items-center gap-1 md:flex">
           {navLinks.map((l) => {
             const active = currentPage === l.page && (!selectedCategory || selectedCategory === 'all');
             return (
@@ -274,16 +272,16 @@ export default function Header({
                     if (onSelectCategory) onSelectCategory('all');
                     onNavigateTo(l.page);
                   }}
-                  className="relative rounded-full px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+                  className="relative rounded-full px-4 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
                 >
                   {active && (
                     <motion.span
                       layoutId="nav-pill"
-                      className="absolute inset-0 rounded-full bg-white/5"
-                      transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                      className="absolute inset-0 rounded-full bg-foreground/5"
+                      transition={{ type: "spring", stiffness: 350, damping: 28 }}
                     />
                   )}
-                  <span className={`relative ${active ? 'text-foreground font-semibold' : ''}`}>
+                  <span className={`relative tracking-wide ${active ? 'text-foreground font-bold' : ''}`}>
                     {l.label}
                   </span>
                 </button>
@@ -300,29 +298,29 @@ export default function Header({
             <button 
               type="button"
               onClick={() => setCategoriesDropdownOpen(!categoriesDropdownOpen)}
-              className={`relative rounded-full px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground cursor-pointer flex items-center gap-1`}
+              className={`relative rounded-full px-4 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground cursor-pointer flex items-center gap-1`}
             >
               {currentPage === 'shop' && selectedCategory !== 'all' && selectedCategory && (
                 <motion.span
                   layoutId="nav-pill"
-                  className="absolute inset-0 rounded-full bg-white/5"
-                  transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                  className="absolute inset-0 rounded-full bg-foreground/5"
+                  transition={{ type: "spring", stiffness: 350, damping: 28 }}
                 />
               )}
-              <span className={`relative flex items-center gap-1 ${currentPage === 'shop' && selectedCategory !== 'all' && selectedCategory ? 'text-foreground font-semibold' : ''}`}>
+              <span className={`relative flex items-center gap-1 ${currentPage === 'shop' && selectedCategory !== 'all' && selectedCategory ? 'text-foreground font-bold' : ''}`}>
                 Categories
-                <span className="text-[8px] opacity-60">▼</span>
+                <span className="text-[7px] text-accent font-bold">▼</span>
               </span>
             </button>
 
             <AnimatePresence>
               {categoriesDropdownOpen && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 8 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute top-full left-0 mt-2 w-48 glass-strong rounded-2xl shadow-elevated py-2 z-[200] border border-white/10"
+                  exit={{ opacity: 0, y: 6 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute top-full left-0 mt-2 w-48 glass-strong rounded-2xl shadow-float py-2 z-[200] border border-border"
                 >
                   <button 
                     type="button"
@@ -331,7 +329,7 @@ export default function Header({
                       onNavigateTo('shop');
                       setCategoriesDropdownOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2.5 text-xs font-bold text-frost/95 hover:bg-white/5 hover:text-primary transition-colors cursor-pointer"
+                    className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-foreground/80 hover:bg-foreground/5 hover:text-accent transition-colors cursor-pointer"
                   >
                     All Catalog
                   </button>
@@ -344,7 +342,7 @@ export default function Header({
                         onNavigateTo('shop');
                         setCategoriesDropdownOpen(false);
                       }}
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-frost/85 hover:bg-white/5 hover:text-primary transition-colors cursor-pointer capitalize"
+                      className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-foreground/80 hover:bg-foreground/5 hover:text-accent transition-colors cursor-pointer capitalize"
                     >
                       {cat.name}
                     </button>
@@ -355,14 +353,14 @@ export default function Header({
           </li>
         </ul>
 
-        {/* Search Bar (Desktop) */}
-        <div ref={searchContainerRef} className="flex-1 max-w-sm lg:max-w-md relative hidden sm:block mx-4">
-          <div className={`relative flex items-center w-full bg-white/5 hover:bg-white/10 border rounded-full transition-all duration-300 ${
+        {/* Search Input (Desktop) */}
+        <div ref={searchContainerRef} className="flex-1 max-w-xs lg:max-w-sm relative hidden sm:block mx-4">
+          <div className={`relative flex items-center w-full bg-foreground/[0.03] hover:bg-foreground/[0.06] border rounded-full transition-all duration-300 ${
             searchDropdownOpen 
-              ? 'border-primary/50 shadow-glow ring-1 ring-primary/30 bg-black/40' 
-              : 'border-white/8'
+              ? 'border-accent/40 shadow-float bg-background' 
+              : 'border-border'
           }`}>
-            <Search className="absolute left-3.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3.5 h-3.5 w-3.5 text-muted-foreground" />
             <input
               type="text"
               placeholder={isListening ? "Listening..." : t('nav.search')}
@@ -378,10 +376,10 @@ export default function Header({
                   handleSearchSubmit(searchLocal);
                 }
               }}
-              className="w-full bg-transparent pl-10 pr-10 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none font-medium"
+              className="w-full bg-transparent pl-9.5 pr-9 py-2 text-xs text-foreground placeholder-muted-foreground outline-none font-medium tracking-wide"
             />
             {isListening ? (
-              <div className="absolute right-3.5 h-3.5 w-3.5 bg-primary rounded-full animate-ping" />
+              <div className="absolute right-3.5 h-2.5 w-2.5 bg-accent rounded-full animate-ping" />
             ) : (
               <button 
                 type="button" 
@@ -389,27 +387,27 @@ export default function Header({
                 className="absolute right-3.5 cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
                 title="Voice Search"
               >
-                <Mic className="h-4 w-4" />
+                <Mic className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
 
-          {/* Smart Search Suggestions Dropdown */}
+          {/* Search suggestions panel */}
           <AnimatePresence>
             {searchDropdownOpen && (
               <motion.div 
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
+                exit={{ opacity: 0, y: 6 }}
                 transition={{ duration: 0.15 }}
-                className="absolute top-full left-0 w-full mt-2 glass-strong rounded-3xl shadow-elevated overflow-hidden z-[200] border border-white/10"
+                className="absolute top-full left-0 w-full mt-2 glass-strong rounded-3xl shadow-float overflow-hidden z-[200] border border-border"
               >
                 {!searchLocal.trim() ? (
                   <div className="p-3">
                     <div className="flex justify-between items-center px-3 py-1.5">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Recent Searches</span>
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Recent Searches</span>
                       {recentSearches.length > 0 && (
-                        <button type="button" onClick={clearAllRecent} className="text-[10px] text-primary hover:text-red-400 cursor-pointer font-bold uppercase tracking-wider">Clear All</button>
+                        <button type="button" onClick={clearAllRecent} className="text-[9px] text-accent hover:text-red-500 cursor-pointer font-bold uppercase tracking-wider">Clear All</button>
                       )}
                     </div>
                     {recentSearches.length > 0 ? (
@@ -417,14 +415,14 @@ export default function Header({
                         <div 
                           key={idx} 
                           onClick={() => handleSearchSubmit(item.term)}
-                          className="flex items-center justify-between px-3 py-2 hover:bg-white/5 rounded-xl cursor-pointer group transition-colors animate-fade-in"
+                          className="flex items-center justify-between px-3 py-2 hover:bg-foreground/5 rounded-xl cursor-pointer group transition-colors"
                         >
-                          <div className="flex items-center gap-2.5">
-                            <Clock className="h-3.5 w-3.5 text-muted-foreground/60" />
-                            <span className="text-xs font-semibold text-foreground/85">{item.term}</span>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3 text-muted-foreground/60" />
+                            <span className="text-xs font-semibold text-foreground/80">{item.term}</span>
                           </div>
-                          <button type="button" onClick={(e) => removeRecentSearch(e, item.term)} className="opacity-0 group-hover:opacity-100 text-muted-foreground/50 hover:text-red-400 cursor-pointer p-1 transition-all">
-                            <X className="h-3.5 w-3.5" />
+                          <button type="button" onClick={(e) => removeRecentSearch(e, item.term)} className="opacity-0 group-hover:opacity-100 text-muted-foreground/50 hover:text-red-500 cursor-pointer p-1 transition-all">
+                            <X className="h-3 w-3" />
                           </button>
                         </div>
                       ))
@@ -436,7 +434,7 @@ export default function Header({
                   <div className="p-2 space-y-1">
                     {suggestions.categories.length > 0 && (
                       <div className="mb-2">
-                        <span className="block px-3 py-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Categories</span>
+                        <span className="block px-3 py-1.5 text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Categories</span>
                         {suggestions.categories.map((c: any) => (
                           <div 
                             key={c.id} 
@@ -444,9 +442,9 @@ export default function Header({
                               if (onSelectCategory) onSelectCategory(c.slug);
                               handleSearchSubmit(c.name);
                             }} 
-                            className="flex items-center gap-2 px-3 py-2 hover:bg-white/5 rounded-xl cursor-pointer text-xs font-bold text-foreground transition-colors"
+                            className="flex items-center gap-2 px-3 py-2 hover:bg-foreground/5 rounded-xl cursor-pointer text-xs font-bold text-foreground transition-colors"
                           >
-                            <Search className="h-3.5 w-3.5 text-primary" />
+                            <Search className="h-3 w-3 text-accent" />
                             {c.name}
                           </div>
                         ))}
@@ -455,14 +453,14 @@ export default function Header({
 
                     {suggestions.brands.length > 0 && (
                       <div className="mb-2">
-                        <span className="block px-3 py-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Brands</span>
+                        <span className="block px-3 py-1.5 text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Brands</span>
                         {suggestions.brands.map((b: any, idx: number) => (
                           <div 
                             key={idx} 
                             onClick={() => handleSearchSubmit(b)} 
-                            className="flex items-center gap-2 px-3 py-2 hover:bg-white/5 rounded-xl cursor-pointer text-xs font-bold text-foreground transition-colors"
+                            className="flex items-center gap-2 px-3 py-2 hover:bg-foreground/5 rounded-xl cursor-pointer text-xs font-bold text-foreground transition-colors"
                           >
-                            <Search className="h-3.5 w-3.5 text-primary" />
+                            <Search className="h-3 w-3 text-accent" />
                             {b}
                           </div>
                         ))}
@@ -471,14 +469,14 @@ export default function Header({
 
                     {suggestions.products.length > 0 ? (
                       <div>
-                        <span className="block px-3 py-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Products</span>
+                        <span className="block px-3 py-1.5 text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Products</span>
                         {suggestions.products.map((p: any) => (
                           <div 
                             key={p.id} 
                             onClick={() => handleSearchSubmit(p.name)} 
-                            className="flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-xl cursor-pointer transition-colors"
+                            className="flex items-center gap-3 px-3 py-2 hover:bg-foreground/5 rounded-xl cursor-pointer transition-colors"
                           >
-                            <img src={p.images?.[0]} alt="" className="h-8 w-8 rounded-lg object-cover border border-white/8 bg-black" />
+                            <img src={p.images?.[0]} alt="" className="h-7 w-7 rounded object-cover border border-border bg-foreground/5" />
                             <div>
                               <div className="text-xs font-bold text-foreground leading-tight">{p.name}</div>
                               <div className="text-[9px] text-muted-foreground font-mono mt-0.5">{p.brand} in {p.category}</div>
@@ -498,35 +496,35 @@ export default function Header({
           </AnimatePresence>
         </div>
 
-        {/* Right Actions Panel */}
-        <div className="flex items-center gap-2 md:gap-3">
+        {/* Action icons panel */}
+        <div className="flex items-center gap-1.5 md:gap-2">
           
           {/* Lang Selector */}
           <div className="relative">
             <button 
               type="button"
               onClick={() => setLangDropdownOpen(!langDropdownOpen)}
-              className="cursor-pointer h-10 w-10 flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+              className="cursor-pointer h-9 w-9 flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
               aria-label="Toggle Language"
             >
-              <Globe className="h-4.5 w-4.5 text-primary" />
+              <Globe className="h-4.5 w-4.5 text-accent" />
             </button>
 
             <AnimatePresence>
               {langDropdownOpen && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 8 }}
-                  className="absolute right-0 mt-2 w-44 glass-strong rounded-2xl shadow-elevated py-1.5 z-[200] border border-white/10"
+                  exit={{ opacity: 0, y: 6 }}
+                  className="absolute right-0 mt-2 w-44 glass-strong rounded-2xl shadow-float py-1.5 z-[200] border border-border"
                 >
                   {LANGUAGES.map((lang) => (
                     <button 
                       type="button"
                       key={lang.code}
                       onClick={() => handleLangChange(lang.code)}
-                      className={`cursor-pointer w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-white/5 transition-colors flex items-center justify-between ${
-                        language === lang.code ? 'text-primary bg-white/5' : 'text-foreground/85'
+                      className={`cursor-pointer w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-foreground/5 transition-colors flex items-center justify-between ${
+                        language === lang.code ? 'text-accent bg-foreground/5' : 'text-foreground/80'
                       }`}
                     >
                       <span>{lang.nativeName}</span>
@@ -538,42 +536,32 @@ export default function Header({
             </AnimatePresence>
           </div>
 
-          {/* Wishlist Icon */}
+          {/* Wishlist */}
           <button 
             type="button"
             onClick={() => onNavigateTo('wishlist')}
-            className={`relative h-10 w-10 flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-white/5 hover:text-foreground cursor-pointer ${
-              currentPage === 'wishlist' ? 'bg-white/5 text-foreground' : ''
+            className={`relative h-9 w-9 flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground cursor-pointer ${
+              currentPage === 'wishlist' ? 'bg-foreground/5 text-foreground' : ''
             }`}
             title={t('nav.wishlist')}
           >
             <Heart className={`h-4.5 w-4.5 ${wishlist.length > 0 ? 'fill-red-500 text-red-500' : ''}`} />
             {wishlist.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-red-500 text-[9px] font-bold text-white rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse">
+              <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 bg-red-500 text-[8px] font-bold text-white rounded-full flex items-center justify-center shadow-md animate-pulse">
                 {wishlist.length}
               </span>
             )}
           </button>
 
-          {/* Cart Icon — Premium capsule styling */}
+          {/* Cart Icon Capsule */}
           <button 
             type="button"
             onClick={() => onNavigateTo('cart')}
-            className="relative flex h-10 items-center gap-2 rounded-full bg-white/5 px-4 text-sm transition hover:bg-white/10 text-foreground cursor-pointer"
+            className="relative flex h-9 items-center gap-1.5 rounded-full bg-foreground/5 hover:bg-foreground/10 px-3.5 text-xs transition text-foreground cursor-pointer font-bold font-mono tracking-wide"
             title={t('nav.cart')}
           >
-            <ShoppingBag className="h-4 w-4 text-primary" />
-            {cartCount > 0 ? (
-              <motion.span 
-                animate={{ scale: [1, 1.15, 1] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                className="font-mono text-xs font-bold text-primary"
-              >
-                {cartCount}
-              </motion.span>
-            ) : (
-              <span className="font-mono text-xs text-muted-foreground">0</span>
-            )}
+            <ShoppingBag className="h-3.5 w-3.5 text-accent" />
+            <span>{cartCount}</span>
           </button>
 
           {/* Profile Dropdown */}
@@ -582,7 +570,7 @@ export default function Header({
               <button 
                 type="button"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="cursor-pointer h-9 w-9 bg-aurora text-white font-bold text-xs rounded-full flex items-center justify-center border border-white/20 hover:scale-105 active:scale-95 transition-all shadow-soft"
+                className="cursor-pointer h-8 w-8 bg-accent text-accent-foreground font-display font-bold text-xs rounded-full flex items-center justify-center border border-white/20 hover:scale-105 active:scale-95 transition-all [box-shadow:var(--shadow-soft)]"
                 aria-label="User profile dropdown"
               >
                 {getInitials(user.name)}
@@ -591,17 +579,17 @@ export default function Header({
               <AnimatePresence>
                 {dropdownOpen && (
                   <motion.div 
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    className="absolute right-0 mt-3 w-56 glass-strong rounded-3xl shadow-elevated py-2 z-[200] border border-white/10"
+                    exit={{ opacity: 0, y: 6 }}
+                    className="absolute right-0 mt-3 w-56 glass-strong rounded-3xl shadow-float py-2 z-[200] border border-border"
                   >
-                    <div className="px-4 py-3 border-b border-white/5">
-                      <p className="text-[9px] text-primary uppercase font-mono tracking-widest bg-primary/10 inline-block px-2.5 py-0.5 rounded-full font-bold mb-1.5">
+                    <div className="px-4 py-3 border-b border-border/40">
+                      <p className="text-[8px] text-accent-deep uppercase font-mono tracking-widest bg-accent-soft px-2.5 py-0.5 rounded-full font-bold mb-1.5 inline-block">
                         {user.role}
                       </p>
-                      <h4 className="font-bold text-sm text-foreground tracking-tight leading-4">{user.name}</h4>
-                      <p className="text-[10px] text-muted-foreground truncate mt-0.5">{user.email}</p>
+                      <h4 className="font-bold text-xs text-foreground tracking-tight leading-4">{user.name}</h4>
+                      <p className="text-[9px] text-muted-foreground truncate mt-0.5">{user.email}</p>
                     </div>
 
                     <button 
@@ -610,9 +598,9 @@ export default function Header({
                         setDropdownOpen(false);
                         onNavigateTo('dashboard');
                       }}
-                      className="cursor-pointer w-full text-left px-4 py-2.5 text-xs font-bold text-foreground/80 hover:bg-white/5 flex items-center gap-2.5 transition-colors"
+                      className="cursor-pointer w-full text-left px-4 py-2 text-xs font-bold text-foreground/80 hover:bg-foreground/5 flex items-center gap-2 transition-colors"
                     >
-                      <LayoutDashboard className="h-4 w-4 text-primary" />
+                      <LayoutDashboard className="h-3.5 w-3.5 text-accent" />
                       {t('nav.dashboard')}
                     </button>
 
@@ -623,9 +611,9 @@ export default function Header({
                         setDropdownOpen(false);
                         onNavigateTo('home');
                       }}
-                      className="cursor-pointer w-full text-left px-4 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/15 flex items-center gap-2.5 transition-colors border-t border-white/5 mt-1"
+                      className="cursor-pointer w-full text-left px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-500/10 flex items-center gap-2 transition-colors border-t border-border/40 mt-1"
                     >
-                      <LogOut className="h-4 w-4" />
+                      <LogOut className="h-3.5 w-3.5" />
                       {t('nav.logout')}
                     </button>
                   </motion.div>
@@ -636,37 +624,37 @@ export default function Header({
             <button 
               type="button"
               onClick={() => onNavigateTo('auth')}
-              className="cursor-pointer h-10 w-10 flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+              className="cursor-pointer h-9 w-9 flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
             >
               <User className="h-4.5 w-4.5" />
             </button>
           )}
 
-          {/* Mobile Menu Toggle */}
+          {/* Mobile menu toggle */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden h-10 w-10 flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-white/5 hover:text-foreground cursor-pointer"
+            className="md:hidden h-9 w-9 flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground cursor-pointer"
           >
-            {mobileMenuOpen ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
+            {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
 
         </div>
       </nav>
 
-      {/* Mobile Menu Drawer Overlay */}
+      {/* Mobile Drawer Menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.25 }}
-            className="glass-strong mx-auto mt-2 max-w-7xl rounded-3xl p-5 md:hidden border border-white/10 shadow-elevated"
+            className="glass-strong mx-auto mt-2 max-w-6xl rounded-3xl p-5 md:hidden border border-border shadow-float"
           >
             {/* Search Input for Mobile */}
-            <div className="relative flex items-center w-full bg-white/5 border border-white/8 rounded-full mb-6">
-              <Search className="absolute left-3.5 h-4 w-4 text-muted-foreground" />
+            <div className="relative flex items-center w-full bg-foreground/[0.03] border border-border rounded-full mb-6">
+              <Search className="absolute left-3.5 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 type="text"
                 placeholder={t('nav.search')}
@@ -681,17 +669,17 @@ export default function Header({
                     setMobileMenuOpen(false);
                   }
                 }}
-                className="w-full bg-transparent pl-10 pr-10 py-3 text-sm text-foreground placeholder-muted-foreground outline-none font-medium"
+                className="w-full bg-transparent pl-9.5 pr-9 py-2.5 text-xs text-foreground placeholder-muted-foreground outline-none font-medium tracking-wide"
               />
             </div>
 
-            {/* Mobile Drawer Links */}
+            {/* Mobile Drawer links */}
             <motion.div 
               variants={drawerListVariants}
               initial="closed"
               animate="open"
               exit="closed"
-              className="flex flex-col gap-2 font-display font-medium text-lg text-foreground"
+              className="flex flex-col gap-1.5 font-display font-medium text-[15px] text-foreground"
             >
               {navLinks.map((l) => (
                 <motion.button
@@ -702,17 +690,17 @@ export default function Header({
                     onNavigateTo(l.page);
                     setMobileMenuOpen(false);
                   }}
-                  className={`text-left rounded-2xl px-4 py-3 hover:bg-white/5 transition capitalize ${
-                    currentPage === l.page ? 'text-primary bg-white/5 font-semibold' : ''
+                  className={`text-left rounded-2xl px-4 py-2.5 hover:bg-foreground/5 transition capitalize ${
+                    currentPage === l.page ? 'text-accent bg-foreground/5 font-bold' : ''
                   }`}
                 >
                   {l.label}
                 </motion.button>
               ))}
 
-              {/* Mobile Drawer Categories Segment */}
-              <motion.div variants={drawerItemVariants} className="flex flex-col gap-2 mt-4 pt-4 border-t border-white/5">
-                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono font-bold px-4 mb-1">Curated Categories</span>
+              {/* Mobile Categories */}
+              <motion.div variants={drawerItemVariants} className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-border/40">
+                <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono font-bold px-4 mb-1">Curated Categories</span>
                 {categoriesList.slice(0, 5).map((cat) => (
                   <button
                     key={cat.id}
@@ -721,8 +709,8 @@ export default function Header({
                       onNavigateTo('shop');
                       setMobileMenuOpen(false);
                     }}
-                    className={`text-left text-sm py-2 px-4 rounded-xl text-muted-foreground hover:bg-white/5 hover:text-foreground capitalize ${
-                      selectedCategory === cat.slug ? 'text-primary bg-white/5 font-semibold' : ''
+                    className={`text-left text-xs py-2 px-4 rounded-xl text-muted-foreground hover:bg-foreground/5 hover:text-foreground capitalize ${
+                      selectedCategory === cat.slug ? 'text-accent bg-foreground/5 font-bold' : ''
                     }`}
                   >
                     {cat.name}

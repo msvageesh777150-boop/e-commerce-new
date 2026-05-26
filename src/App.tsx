@@ -125,14 +125,13 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between relative z-10 overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between relative z-10 overflow-hidden grain">
       
-      {/* Ambient background glows + parsec grid overlay */}
+      {/* Ambient gold-editorial glows */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-0 bg-radial-glow opacity-65" />
-        <div className="absolute -left-40 top-1/3 h-[40rem] w-[40rem] rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute right-0 top-2/3 h-[30rem] w-[30rem] rounded-full bg-accent/10 blur-3xl" />
-        <div className="absolute inset-0 grid-lines opacity-30" />
+        <div className="absolute inset-0 bg-radial-glow opacity-20" />
+        <div className="absolute -left-40 top-1/4 h-[35rem] w-[35rem] rounded-full bg-[var(--accent-soft)] opacity-30 blur-3xl" />
+        <div className="absolute right-0 top-2/3 h-[25rem] w-[25rem] rounded-full bg-[var(--accent)] opacity-15 blur-3xl" />
       </div>
 
       {/* Top Banner Navigation Header */}

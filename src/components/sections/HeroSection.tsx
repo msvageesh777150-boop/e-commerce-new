@@ -1,107 +1,26 @@
-import React, { Suspense, useRef, useState, useEffect } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, MeshDistortMaterial, Sparkles } from '@react-three/drei';
+import React, { useRef, useState } from 'react';
 import { ArrowRight, ArrowDown } from 'lucide-react';
-import { motion, Variants } from 'motion/react';
-import * as THREE from 'three';
-import ErrorBoundary from '../ui/ErrorBoundary';
+import { motion, Variants, useScroll, useTransform } from 'motion/react';
 
-// Fallback background in case Canvas fails to render or compile
-function GradientMeshBg() {
-  return (
-    <div className="absolute inset-0 bg-background flex items-center justify-center overflow-hidden pointer-events-none">
-      <div className="absolute w-[600px] h-[600px] rounded-full bg-primary/10 blur-[150px] animate-pulse -top-20 -left-20" />
-      <div className="absolute w-[600px] h-[600px] rounded-full bg-accent/10 blur-[150px] animate-pulse -bottom-20 -right-20" />
-    </div>
-  );
-}
-
-// 3D Distorting Luxury Orb
-function Orb() {
-  const ref = useRef<THREE.Mesh>(null);
-  useFrame((state) => {
-    if (!ref.current) return;
-    const t = state.clock.elapsedTime;
-    ref.current.rotation.x = t * 0.15;
-    ref.current.rotation.y = t * 0.2;
-    
-    // Float slightly towards the mouse pointer position
-    const mx = state.pointer.x;
-    const my = state.pointer.y;
-    ref.current.position.x += (mx * 0.5 - ref.current.position.x) * 0.05;
-    ref.current.position.y += (my * 0.3 - ref.current.position.y) * 0.05;
-  });
-
-  return (
-    <Float speed={1.4} rotationIntensity={0.6} floatIntensity={1.2}>
-      <mesh ref={ref} scale={1.6}>
-        <icosahedronGeometry args={[1, 16]} />
-        <MeshDistortMaterial
-          color="#7c3aed"
-          emissive="#5b21b6"
-          emissiveIntensity={0.35}
-          roughness={0.15}
-          metalness={0.95}
-          distort={0.35}
-          speed={1.6}
-        />
-      </mesh>
-    </Float>
-  );
-}
-
-// Orbiting thin glowing rings
-function Ring({ radius = 2.6, tilt = 0.5, speed = 0.3 }) {
-  const ref = useRef<THREE.Mesh>(null);
-  useFrame((s) => {
-    if (!ref.current) return;
-    ref.current.rotation.z = s.clock.elapsedTime * speed;
-  });
-  return (
-    <mesh ref={ref} rotation={[tilt, 0.3, 0]}>
-      <torusGeometry args={[radius, 0.004, 16, 200]} />
-      <meshBasicMaterial color="#a78bfa" transparent opacity={0.45} />
-    </mesh>
-  );
-}
-
-// Complete 3D Canvas Scene
-function HeroScene() {
-  return (
-    <Suspense fallback={null}>
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[5, 5, 5]} intensity={1.2} color="#a78bfa" />
-      <directionalLight position={[-5, -3, -5]} intensity={0.6} color="#22d3ee" />
-      
-      <Orb />
-      <Ring radius={2.2} tilt={0.4} speed={0.25} />
-      <Ring radius={2.6} tilt={-0.6} speed={-0.18} />
-      <Ring radius={3.0} tilt={1.1} speed={0.12} />
-      
-      <Sparkles count={80} scale={8} size={2} speed={0.4} color="#a78bfa" />
-    </Suspense>
-  );
-}
-
-// Word-by-word typographic reveal
-function TextReveal({ text, className }: { text: string; className?: string }) {
+// Word-by-word reveal
+function TextReveal({ text, className, delay = 0.15 }: { text: string; className?: string; delay?: number }) {
   const words = text.split(' ');
   
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.08, delayChildren: 0.15 }
+      transition: { staggerChildren: 0.08, delayChildren: delay }
     }
   };
 
   const wordVariants: Variants = {
-    hidden: { opacity: 0, y: 40, scale: 0.95 },
+    hidden: { opacity: 0, y: 30, scale: 0.95 },
     visible: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] }
+      transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] }
     }
   };
 
@@ -113,7 +32,7 @@ function TextReveal({ text, className }: { text: string; className?: string }) {
       className={className}
     >
       {words.map((word, idx) => (
-        <span key={idx} className="inline-block mr-3 overflow-hidden py-1">
+        <span key={idx} className="inline-block mr-2.5 overflow-hidden py-1">
           <motion.span variants={wordVariants} className="inline-block">
             {word}
           </motion.span>
@@ -123,8 +42,8 @@ function TextReveal({ text, className }: { text: string; className?: string }) {
   );
 }
 
-// Interactive Magnetic Button
-function MagneticButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+// Interactive Magnetic Button Wrapper
+function MagneticButton({ children, onClick, className = "" }: { children: React.ReactNode; onClick?: () => void; className?: string }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [coords, setCoords] = useState({ x: 0, y: 0 });
 
@@ -134,7 +53,7 @@ function MagneticButton({ children, onClick }: { children: React.ReactNode; onCl
     const rect = btn.getBoundingClientRect();
     const x = e.clientX - rect.left - rect.width / 2;
     const y = e.clientY - rect.top - rect.height / 2;
-    setCoords({ x: x * 0.25, y: y * 0.25 }); // 25% stickiness lag
+    setCoords({ x: x * 0.22, y: y * 0.22 }); // 22% Apple-style lag
   };
 
   const handleMouseLeave = () => {
@@ -148,10 +67,10 @@ function MagneticButton({ children, onClick }: { children: React.ReactNode; onCl
       onMouseLeave={handleMouseLeave}
       onClick={onClick}
       animate={{ x: coords.x, y: coords.y }}
-      transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+      transition={{ type: 'spring', stiffness: 200, damping: 20 }}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className="cursor-pointer relative inline-flex items-center justify-center gap-2.5 rounded-full px-8 py-4 text-xs font-bold uppercase tracking-widest font-mono bg-aurora text-white shadow-soft hover:shadow-[0_0_40px_-8px_oklch(0.78_0.22_295/0.7)] border border-white/20 select-none overflow-hidden"
+      className={`cursor-pointer ${className}`}
     >
       <span className="relative z-10 inline-flex items-center gap-2">
         {children}
@@ -165,80 +84,125 @@ interface HeroSectionProps {
 }
 
 export default function HeroSection({ onNavigateTo }: HeroSectionProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Parallax tracking of scroll movements
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"]
+  });
+
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
+  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 1.06]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0.35]);
+  const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const orbY2 = useTransform(scrollYProgress, [0, 1], [0, 70]);
+
   return (
-    <section className="relative w-full h-[90vh] min-h-[620px] flex items-center justify-center overflow-hidden rounded-[2.5rem] border border-white/10 bg-gradient-surface shadow-elevated">
+    <section ref={containerRef} className="relative w-full overflow-hidden pb-16 pt-8 select-none">
       
-      {/* 3D Canvas Scene Overlay */}
-      <div className="absolute inset-0 z-0 w-full h-full pointer-events-none">
-        <ErrorBoundary fallback={<GradientMeshBg />}>
-          <Suspense fallback={<GradientMeshBg />}>
-            <Canvas
-              camera={{ position: [0, 0, 4.8], fov: 50 }}
-              dpr={[1, 1.8]}
-              gl={{ antialias: true, alpha: true }}
-            >
-              <HeroScene />
-            </Canvas>
-          </Suspense>
-        </ErrorBoundary>
-      </div>
+      {/* 1. Multi-layered gold glows base */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[680px] glow-hero z-0" />
+      
+      {/* 2. Floating gold ambient orbs */}
+      <motion.div
+        aria-hidden
+        style={{ y: orbY1 }}
+        className="pointer-events-none absolute left-[10%] top-32 hidden h-28 w-28 rounded-full bg-[var(--accent-soft)] opacity-40 blur-3xl float-slow md:block z-0"
+      />
+      <motion.div
+        aria-hidden
+        style={{ y: orbY2 }}
+        className="pointer-events-none absolute right-[12%] top-20 hidden h-36 w-36 rounded-full bg-[var(--accent)] opacity-20 blur-3xl float-slow md:block z-0"
+      />
 
-      {/* Grid line layer + Radial overlay */}
-      <div className="absolute inset-0 bg-radial-glow opacity-50 pointer-events-none z-5" />
-      <div className="absolute inset-0 grid-lines opacity-25 pointer-events-none z-5" />
-
-      {/* Text Context Overlay */}
-      <div className="relative z-10 text-center max-w-4xl px-6 flex flex-col items-center gap-6 select-none pointer-events-auto">
+      {/* 3. Text Descriptions */}
+      <motion.div
+        style={{ opacity: heroOpacity }}
+        className="relative z-10 mx-auto max-w-4xl px-6 pb-12 pt-12 text-center"
+      >
         <motion.div 
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          className="inline-flex items-center gap-2 rounded-full glass px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground border border-white/10"
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="inline-flex items-center gap-2 rounded-full bg-background/80 border border-border backdrop-blur-md px-4.5 py-2 text-[10px] font-mono uppercase tracking-[0.22em] text-accent font-bold"
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
-          <span>Antigravity Engine Engaged</span>
+          <span className="h-1 w-1 rounded-full bg-[var(--accent)]" />
+          <span>New collection · sonus one</span>
         </motion.div>
 
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-medium font-display leading-[0.95] tracking-tight text-white">
-          <TextReveal text="Objects designed" className="block" />
-          <TextReveal text="for the next century." className="block text-gradient mt-2" />
+        <h1 className="mt-8 text-balance text-5xl font-semibold leading-[1.02] tracking-tight md:text-7xl lg:text-[88px] text-foreground font-display">
+          <TextReveal text="Sound," />{' '}
+          <span className="text-accent italic">
+            <TextReveal text="sculpted." delay={0.15} />
+          </span>
         </h1>
 
         <motion.p 
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.8 }}
-          className="text-muted-foreground text-sm sm:text-base lg:text-lg max-w-2xl leading-relaxed font-sans font-medium"
+          transition={{ delay: 0.5, duration: 0.8 }}
+          className="mx-auto mt-6 max-w-xl text-pretty text-base text-muted-foreground md:text-lg font-medium leading-relaxed"
         >
-          Levitate your shopping experience in deep space. Discover custom multi-vendor products drifting lazily in an optimized three-dimensional physics space.
+          A new chapter in personal audio. Levitate your shopping experience in deep space. Lighter, quieter, infinitely more present.
         </motion.p>
 
+        {/* Action launches */}
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 1.0, type: 'spring', stiffness: 120 }}
-          className="pt-4 flex items-center justify-center"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7, duration: 0.8 }}
+          className="mt-10 flex items-center justify-center gap-3.5"
         >
-          <MagneticButton onClick={() => onNavigateTo('shop')}>
+          <MagneticButton 
+            onClick={() => onNavigateTo('shop')}
+            className="shine btn-accent inline-flex h-12 items-center justify-center rounded-full px-7 text-xs font-bold uppercase tracking-widest font-mono select-none active:scale-[0.97]"
+          >
             <span>Launch Catalog</span>
-            <ArrowRight className="h-4.5 w-4.5 text-white" />
+            <ArrowRight className="h-4 w-4" />
+          </MagneticButton>
+
+          <MagneticButton 
+            onClick={() => {
+              const nextEl = document.getElementById('categories-section');
+              if (nextEl) nextEl.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="inline-flex h-12 items-center justify-center rounded-full border border-border bg-background/60 hover:bg-surface px-7 text-xs font-bold uppercase tracking-widest font-mono backdrop-blur-sm transition hover:border-foreground/30 hover:shadow-soft"
+          >
+            <span>Explore</span>
           </MagneticButton>
         </motion.div>
+      </motion.div>
+
+      {/* 4. Large Parallax card with premium paper film grain */}
+      <div className="relative z-10 mx-auto max-w-4xl px-6">
+        <div className="group relative overflow-hidden rounded-[2.5rem] bg-surface border border-border grain [box-shadow:var(--shadow-float)] aspect-[16/10] sm:aspect-[16/9]">
+          <motion.img
+            src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&q=80"
+            alt="Sonus One headphones"
+            style={{ y: heroY, scale: heroScale }}
+            className="h-full w-full object-cover will-change-transform"
+          />
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background/70 to-transparent" />
+        </div>
       </div>
 
-      {/* Bounce Down Scroll Hint */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
+      {/* 5. Minimalist Golden Line Drawing */}
+      <div aria-hidden className="mx-auto mt-16 h-px max-w-2xl draw-line" />
+
+      {/* 6. Bounce Down hint */}
+      <div className="flex justify-center mt-8">
         <motion.div
           animate={{ y: [0, 8, 0] }}
           transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-          className="flex flex-col items-center gap-1.5 text-[10px] font-mono tracking-widest text-muted-foreground cursor-pointer select-none"
+          className="flex flex-col items-center gap-1.5 text-[9px] font-mono tracking-[0.25em] text-muted-foreground cursor-pointer uppercase font-bold"
           onClick={() => {
             const nextEl = document.getElementById('categories-section');
             if (nextEl) nextEl.scrollIntoView({ behavior: 'smooth' });
           }}
         >
           <span>Explore Cosmos</span>
-          <ArrowDown className="h-3.5 w-3.5 text-primary" />
+          <ArrowDown className="h-3.5 w-3.5 text-accent" />
         </motion.div>
       </div>
 

@@ -7,3 +7,4 @@ coverage/
 .env*
 !.env.example
 reference-ui/
+reference-ui-2/

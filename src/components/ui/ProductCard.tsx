@@ -27,9 +27,9 @@ export default function ProductCard({
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
   
-  // Map mouse coordinates to smooth rotation values [-8deg, 8deg]
-  const rx = useSpring(useTransform(my, [-0.5, 0.5], [8, -8]), { stiffness: 200, damping: 20 });
-  const ry = useSpring(useTransform(mx, [-0.5, 0.5], [-8, 8]), { stiffness: 200, damping: 20 });
+  // Map mouse coordinates to smooth rotation values [-6deg, 6deg] for a subtle, high-end Apple effect
+  const rx = useSpring(useTransform(my, [-0.5, 0.5], [6, -6]), { stiffness: 180, damping: 20 });
+  const ry = useSpring(useTransform(mx, [-0.5, 0.5], [-6, 6]), { stiffness: 180, damping: 20 });
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const card = cardRef.current;
@@ -51,63 +51,63 @@ export default function ProductCard({
       ref={cardRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      initial={{ opacity: 0, y: 40 }}
+      initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       style={{ perspective: 1200 }}
       className="w-full select-none"
     >
       <motion.div
         style={{ rotateX: rx, rotateY: ry, transformStyle: 'preserve-3d' }}
-        className="relative overflow-hidden rounded-3xl glass hover-lift flex flex-col justify-between group h-full"
+        className="relative overflow-hidden rounded-3xl bg-card border border-border shadow-soft hover:shadow-float lift flex flex-col justify-between group h-full"
       >
-        {/* Wishlist Ribbon Toggler */}
+        {/* Wishlist ribbon toggle */}
         <button 
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onToggleWishlist();
           }}
-          className="cursor-pointer absolute top-4 right-4 h-8 w-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10 hover:scale-110 active:scale-95 transition-all shadow-md z-20 hover:border-primary"
+          className="cursor-pointer absolute top-4 right-4 h-8 w-8 rounded-full bg-background/80 backdrop-blur-md flex items-center justify-center border border-border hover:scale-105 active:scale-95 transition-all shadow-sm z-25 hover:border-accent"
           aria-label="Add to wishlist"
         >
-          <Heart className={`h-4 w-4 transition-colors ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-foreground/60 hover:text-red-400'}`} />
+          <Heart className={`h-4 w-4 transition-colors ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-muted-foreground/80 hover:text-red-400'}`} />
         </button>
 
-        {/* Media Image Aspect */}
+        {/* Media section with dynamic .shine reflection */}
         <div 
           onClick={onSelect}
-          className="aspect-[4/5] bg-black/20 relative overflow-hidden cursor-pointer"
+          className="aspect-[4/5] bg-surface relative overflow-hidden cursor-pointer shine"
         >
-          <div className="absolute inset-0 bg-radial-glow opacity-60" />
+          <div className="absolute inset-0 bg-radial-glow opacity-30" />
           <motion.img
             src={p.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80'}
             alt={p.name}
             loading="lazy"
-            className="h-full w-full object-cover"
-            initial={{ scale: 1.1 }}
-            whileHover={{ scale: 1.18 }}
-            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full w-full object-cover will-change-transform"
+            initial={{ scale: 1.05 }}
+            whileHover={{ scale: 1.12 }}
+            transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/10 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background/40 to-transparent" />
           
-          {/* Curated Category Tag */}
-          <div className="absolute left-4 top-4 rounded-full glass px-3 py-1 text-[9px] font-mono uppercase tracking-widest text-foreground font-semibold">
+          {/* Category tag */}
+          <div className="absolute left-4 top-4 rounded-full bg-background/80 border border-border backdrop-blur-md px-3 py-1 text-[9px] font-mono uppercase tracking-widest text-accent font-bold">
             {p.category}
           </div>
 
-          {/* Interactive Hover Control Overlay */}
-          <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col gap-2 items-center justify-center z-10 p-3">
+          {/* Quick actions popup overlay */}
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col gap-2 items-center justify-center z-20 p-3">
             <button 
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onSelect();
               }}
-              className="w-36 bg-white hover:bg-frost text-black text-xs font-bold py-2.5 rounded-full shadow-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95"
+              className="w-36 bg-background hover:bg-surface text-foreground text-xs font-bold py-2.5 rounded-full shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 border border-border"
             >
-              <Eye className="h-3.5 w-3.5 text-primary" />
+              <Eye className="h-3.5 w-3.5 text-accent" />
               Quick View
             </button>
             <button 
@@ -116,7 +116,7 @@ export default function ProductCard({
                 e.stopPropagation();
                 onAddToCart();
               }}
-              className="w-36 bg-aurora text-white text-xs font-bold py-2.5 rounded-full shadow-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95"
+              className="w-36 btn-accent text-xs font-bold py-2.5 rounded-full shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 border border-white/10"
             >
               <ShoppingBag className="h-3.5 w-3.5" />
               Add to Cart
@@ -124,32 +124,32 @@ export default function ProductCard({
           </div>
         </div>
 
-        {/* Text and Ratings Details */}
-        <div className="p-5 flex-1 flex flex-col justify-between">
+        {/* Labels & prices */}
+        <div className="p-5 flex-1 flex flex-col justify-between bg-card z-10 relative">
           <div className="space-y-1">
             <div className="flex justify-between items-center text-[8px] uppercase font-mono tracking-widest text-muted-foreground font-bold">
-              <span>{p.brand}</span>
+              <span className="text-accent">{p.brand}</span>
               <span>{p.stock > 0 ? `${p.stock} units` : 'Sold out'}</span>
             </div>
             
             <h3
               onClick={onSelect}
-              className="font-display text-lg font-medium text-foreground hover:text-primary mt-1 cursor-pointer transition-colors leading-tight truncate"
+              className="font-display text-[17px] font-semibold text-foreground hover:text-accent mt-1 cursor-pointer transition-colors leading-tight truncate"
             >
               {p.name}
             </h3>
             
             <p className="text-muted-foreground text-xs line-clamp-1 italic font-medium">"{p.description}"</p>
 
-            <div className="flex gap-1 items-center pt-2">
+            <div className="flex gap-1 items-center pt-2 select-none">
               <div className="flex text-amber-400 gap-0.5">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star 
                     key={i} 
                     className={`h-3 w-3 ${
                       i < Math.floor(ratings.avg) 
-                        ? 'fill-amber-400 text-amber-400' 
-                        : 'text-white/10'
+                        ? 'fill-amber-450 text-amber-450' 
+                        : 'text-foreground/10'
                     }`} 
                   />
                 ))}
@@ -158,9 +158,9 @@ export default function ProductCard({
             </div>
           </div>
 
-          {/* Pricing & Cart Escrow Actions */}
-          <div className="mt-4 pt-3.5 border-t border-white/5 flex justify-between items-center">
-            <span className="font-bold text-primary font-mono text-sm tracking-wider">
+          {/* Escrow prices */}
+          <div className="mt-4 pt-3.5 border-t border-border flex justify-between items-center font-mono">
+            <span className="font-bold text-foreground text-sm tracking-wider">
               ₹{p.price.toLocaleString('en-IN')}
             </span>
             <button 
@@ -169,9 +169,9 @@ export default function ProductCard({
                 e.stopPropagation();
                 onAddToCart();
               }}
-              className="cursor-pointer bg-white/5 hover:bg-white/10 text-foreground font-bold py-1.5 px-3 rounded-full text-[10px] flex items-center gap-1.5 transition-colors border border-white/8 active:scale-95"
+              className="cursor-pointer bg-secondary hover:bg-muted text-foreground font-bold py-1.5 px-3.5 rounded-full text-[10px] flex items-center gap-1.5 transition-colors border border-border active:scale-95"
             >
-              <ShoppingBag className="h-3 w-3 text-primary" />
+              <ShoppingBag className="h-3 w-3 text-accent" />
               {addToCartLabel}
             </button>
           </div>

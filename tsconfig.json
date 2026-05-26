@@ -27,6 +27,7 @@
     "node_modules",
     "functions",
     "dist",
-    "reference-ui"
+    "reference-ui",
+    "reference-ui-2"
   ]
 }
